@@ -17,6 +17,6 @@ class ConnectionFactory(object):
             database = "master"
 
         #http://pymssql.org/en/stable/ref/pymssql.html
-        conn = pymssql.connect(server=server, user=user, password=password, database=database, timeout=timeout, appname="ansible_mssql_mdule")
+        conn = pymssql.connect(server=server, user=user, password=password, database=database, timeout=timeout, appname="ansible_mssql_module")
 
         return conn
