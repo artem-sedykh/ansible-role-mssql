@@ -1,0 +1,106 @@
+{
+    "ansible_test_login": {
+            "state": "present",
+            "password": "12asdasdzqSSSddddd33",
+            "default_database": "AWAD_TaxesV2",
+            "enabled": false
+    },
+    "ansible_test_login2": {
+            "state": "present",
+            "password": "12asdasSSSdd33",
+            "users": {
+                    "ansible_test_login2": {
+                            "databases": {
+                                    "airfiles": { "roles": [ "db_datareader", "db_datawriter" ] },
+                                    "companies": { "roles": [ "db_datareader", "db_datawriter" ] },
+                                    "cabinet": { "roles": [ "db_datareader", "db_datawriter" ] },
+                                    "profiles": { "roles": [ "db_datareader", "db_datawriter" ] }
+                            }
+                    }
+            }
+    },
+    "ansible_test_login3": {
+            "state": "present",
+            "password": "12asdasSSSdd33",
+            "users": {
+                    "ansible_test_login2": {
+                            "databases": {
+                                    "airfiles": { "roles": [ "db_datareader", "db_datawriter" ] },
+                                    "companies": { "roles": [ "db_datareader", "db_datawriter" ] },
+                                    "cabinet": { "roles": [ "db_datareader", "db_datawriter" ] },
+                                    "profiles": { "roles": [ "db_datareader", "db_datawriter" ] }
+                            }
+                    }
+            }
+    },
+    "ansible_test_login4": {
+            "state": "present",
+            "password": "12asdasSSSdd33",
+            "users": {
+                    "ansible_test_login2": {
+                            "databases": {
+                                    "airfiles": { "roles": [ "db_datareader", "db_datawriter" ] },
+                                    "companies": { "roles": [ "db_datareader", "db_datawriter" ] },
+                                    "cabinet": { "roles": [ "db_datareader", "db_datawriter" ] },
+                                    "profiles": { "roles": [ "db_datareader", "db_datawriter" ] }
+                            }
+                    }
+            }
+    },
+    "ansible_test_login5": {
+            "state": "present",
+            "password": "12asdasSSSdd33",
+            "users": {
+                    "ansible_test_login2": {
+                            "databases": {
+                                    "airfiles": { "roles": [ "db_datareader", "db_datawriter" ] },
+                                    "companies": { "roles": [ "db_datareader", "db_datawriter" ] },
+                                    "cabinet": { "roles": [ "db_datareader", "db_datawriter" ] },
+                                    "profiles": { "roles": [ "db_datareader", "db_datawriter" ] }
+                            }
+                    }
+            }
+    },
+    "ansible_test_login6": {
+            "state": "present",
+            "password": "12asdasSSSdd33",
+            "users": {
+                    "ansible_test_login2": {
+                            "databases": {
+                                    "airfiles": { "roles": [ "db_datareader", "db_datawriter" ] },
+                                    "companies": { "roles": [ "db_datareader", "db_datawriter" ] },
+                                    "cabinet": { "roles": [ "db_datareader", "db_datawriter" ] },
+                                    "profiles": { "roles": [ "db_datareader", "db_datawriter" ] }
+                            }
+                    }
+            }
+    },
+    "ansible_test_login7": {
+            "state": "absent",
+            "password": "12asdasSSSdd33",
+            "users": {
+                    "ansible_test_login2": {
+                            "databases": {
+                                    "airfiles": { "roles": [ "db_datareader", "db_datawriter" ] },
+                                    "companies": { "roles": [ "db_datareader", "db_datawriter" ] },
+                                    "cabinet": { "roles": [ "db_datareader", "db_datawriter" ] },
+                                    "profiles": { "roles": [ "db_datareader", "db_datawriter" ] }
+                            }
+                    }
+            }
+    },
+    "ansible_test_login8": {
+            "state": "absent",
+            "password": "12asdasSSSdd33",
+            "users": {
+                    "ansible_test_login2": {
+                            "databases": {
+                                    "airfiles": { "roles": [ "db_datareader", "db_datawriter" ] },
+                                    "companies": { "roles": [ "db_datareader", "db_datawriter" ] },
+                                    "cabinet": { "roles": [ "db_datareader", "db_datawriter" ] },
+                                    "profiles": { "roles": [ "db_datareader", "db_datawriter" ] }
+                            }
+                    }
+            }
+    }
+}

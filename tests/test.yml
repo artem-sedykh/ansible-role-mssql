@@ -1,0 +1,15 @@
+---
+- name: Sync sql logins
+  hosts: sql_servers
+  gather_facts: no
+  tasks:
+  - mssql_users:
+      host: '{{ sql_host }}'
+      login: '{{ sql_user }}'
+      password: '{{ sql_password }}'
+      sources:
+        - source\services\*.json
+    register: out
+    delegate_to: localhost
+
+  - debug: var=out.changes
