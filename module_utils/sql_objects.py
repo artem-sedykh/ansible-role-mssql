@@ -40,32 +40,87 @@ class SqlUser(object):
         self.databases = databases
         self.name = name
 
-    def apply(self, connectionFactory, login):
+    def get_changes(self, connectionFactory, login):
 
         changed = False
+
+        changes = {}
 
         for database in self.databases:
             database_name = database.name
             roles = database.roles
             database_state = database.state
             user_name = self.name
+            database_changes = {}
+            database_changed = False
 
             if not sql_utils_users.is_database_available(connectionFactory, database_name):
+                database_changes["database_unavailable"] = True
+                changes[database_name] = database_changes
+                continue
+
+            if database_state == "absent":
+                if sql_utils_users.has_drop_user(connectionFactory, user_name, database_name):
+                    database_changes["drop_user"] = True
+                    database_changed = True
+
+            if database_state == "present":
+
+                if sql_utils_users.has_create_user(connectionFactory, user_name, login, database_name):
+                    database_changes["create_user"] = True
+                    database_changed = True
+
+                if sql_utils_users.has_sync_user_roles(connectionFactory, user_name, roles, database_name):
+                    database_changes["sync_user_roles"] = True
+                    database_changed = True
+
+            if database_changed:
+                changes[database_name] = database_changes
+
+            changed = changed or database_changed
+
+        return changed, changes
+
+    def apply(self, connectionFactory, login):
+
+        changed = False
+
+        changes = {}
+
+        for database in self.databases:
+            database_name = database.name
+            roles = database.roles
+            database_state = database.state
+            user_name = self.name
+            database_changes = {}
+            database_changed = False
+
+            if not sql_utils_users.is_database_available(connectionFactory, database_name):
+                database_changes["database_unavailable"] = True
+                changes[database_name] = database_changes
                 continue
 
             if database_state == "absent":
                 if sql_utils_users.drop_user(connectionFactory, user_name, database_name):
-                    changed = True
+                    database_changes["drop_user"] = True
+                    database_changed = True
 
             if database_state == "present":
 
                 if sql_utils_users.create_user(connectionFactory, user_name, login, database_name):
-                    changed = True
+                    database_changes["create_user"] = True
+                    database_changed = True
 
                 if sql_utils_users.sync_user_roles(connectionFactory, user_name, roles, database_name):
-                    changed = True
+                    database_changes["sync_user_roles"] = True
+                    database_changed = True
 
-        return changed
+            if database_changed:
+                changes[database_name] = database_changes
+
+            changed = changed or database_changed
+
+        return changed, changes
 
     @staticmethod
     def parse(json_user):
@@ -75,9 +130,17 @@ class SqlUser(object):
         for key, value in json_user.items():
             user_name = key
             databases = []
+            state = "present"
 
             if 'databases' in value:
                 databases = SqlDatabase.parse(value['databases'])
+
+            if 'state' in value:
+                state = value['state']
+
+            if state == "absent":
+                for database in databases:
+                    database.state = state
 
             sql_user = SqlUser(user_name, databases)
 
@@ -103,49 +166,70 @@ class SqlLogin(object):
 
     def apply(self, connectionFactory):
 
-        changes = []
-
         login_exists = sql_utils.login_exists(connectionFactory, self.login)
+
+        changes = {}
+        users_changes = {}
+        changed = False
+        users_changed = False
 
         if self.state == "present":
 
             if login_exists:
                 if sql_utils.change_default_database(connectionFactory, self.login, self.default_database):
-                    changes.append("[default database changed]")
+                    changes["changed_default_database"] = True
+                    changed = True
 
                 if sql_utils.change_default_language(connectionFactory, self.login, self.default_language):
-                    changes.append("[default language changed]")
+                    changes["changed_default_language"] = True
+                    changed = True
 
                 if sql_utils.change_password(connectionFactory, self.login, self.password):
-                    changes.append("[password changed]")
+                    changes["changed_password"] = True
+                    changed = True
             else:
                 sql_utils.create_login(connectionFactory, self.login, self.password, self.sid, self.default_database,
                                        self.default_language)
-                changes.append("[created]")
+                changes["created"] = True
+                changed = True
 
             if self.enabled:
                 if sql_utils.disable_or_enable_login(connectionFactory, self.login, self.enabled):
-                    changes.append("[enabled]")
+                    changes["enabled"] = True
+                    changed = True
             else:
                 if sql_utils.disable_or_enable_login(connectionFactory, self.login, self.enabled):
-                    changes.append("[disabled]")
+                    changes["disabled"] = True
+                    changed = True
 
         if self.state == "absent" and login_exists and sql_utils.drop_login(connectionFactory, self.login):
-            changes.append("[dropped]")
+            changes["dropped"] = True
+            changed = True
 
         for user in self.users:
-            user.apply(connectionFactory, self.login)
+            user_result = user.apply(connectionFactory, self.login)
 
-        return changes
+            if user_result[0]:
+                users_changes[user.name] = {"databases": user_result[1]}
+                users_changed = True
+
+        if users_changed:
+            changes["users"] = users_changes
+
+        return changed, changes
 
     def get_changes(self, connectionFactory):
 
-        changes = []
+        changes = {}
+        users_changes = {}
+        changed = False
+        users_changed = False
 
         login_exists = sql_utils.login_exists(connectionFactory, self.login)
 
         if self.state == "absent" and login_exists:
-            changes.append("[dropped]")
+            changes["dropped"] = True
+            changed = True
 
         if self.state == "present":
 
@@ -159,23 +243,39 @@ class SqlLogin(object):
                 is_enabled_login = sql_utils.is_enabled_login(connectionFactory, self.login)
 
                 if has_change_default_database:
-                    changes.append("[default database changed]")
+                    changes["changed_default_database"] = True
+                    changed = True
 
                 if has_change_default_language:
-                    changes.append("[default language changed]")
+                    changes["changed_default_language"] = True
+                    changed = True
 
                 if has_change_password:
-                    changes.append("[password changed]")
+                    changes["changed_password"] = True
+                    changed = True
 
                 if self.enabled and not is_enabled_login:
-                    changes.append("[enabled]")
+                    changes["enabled"] = True
+                    changed = True
 
                 if not self.enabled and is_enabled_login:
-                    changes.append("[disabled]")
+                    changes["disabled"] = True
+                    changed = True
             else:
-                changes.append("[created]")
+                changes["created"] = True
+                changed = True
 
-        return changes
+        for user in self.users:
+            user_result = user.get_changes(connectionFactory, self.login)
+
+            if user_result[0]:
+                users_changes[user.name] = {"databases": user_result[1]}
+                users_changed = True
+
+        if users_changed:
+            changes["users"] = users_changes
+
+        return changed, changes
 
     @staticmethod
     def parse(json_logins):

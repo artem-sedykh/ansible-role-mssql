@@ -126,35 +126,39 @@ def main():
             module.fail_json(
                 msg="unable to connect to {0}, check login and password are correct".format(host))
 
-    sql_logins = []
+    sql_logins = {}
 
-    try:
-        for path in sources:
-            for file_path in glob.glob(path):
+    for path in sources:
+        for file_path in glob.glob(path):
+            try:
                 with open(file_path, "r") as read_file:
                     data = json.load(read_file)
-                    sql_logins.extend(SqlLogin.parse(data))
-
-    except Exception as e:
-        module.fail_json(msg="parse sql logins exception: %s" % (str(e)))
+                    for item in SqlLogin.parse(data):
+                        if item.login in sql_logins:
+                            module.log('Login duplication [{0}]'.format(item.login))
+                        sql_logins[item.login] = item
+            except Exception as e:
+                module.fail_json(msg="file: %s, parse sql logins exception: %s" % (file_path, str(e)))
 
     changed = False
 
     sql_logins_changes = []
 
-    for sql_login in sql_logins:
+    for sql_login in sql_logins.values():
         try:
             if module.check_mode:
-                changes = sql_login.get_changes(factory)
+                result = sql_login.get_changes(factory)
             else:
-                changes = sql_login.apply(factory)
+                result = sql_login.apply(factory)
 
-            if len(changes) > 0:
-                sql_logins_changes.append("{0}: {1}".format(sql_login.login, ", ".join(changes)))
+            sql_login_changed = result[0]
+
+            if sql_login_changed:
+                sql_logins_changes[sql_login.login] = result[1]
                 changed = True
 
         except Exception as e:
-            module.fail_json(msg="error: " + str(e))
+            module.fail_json(msg="login: [%s], error: %s" % (sql_login.name, str(e)))
 
     module.exit_json(changed=changed, changes=sql_logins_changes)
 

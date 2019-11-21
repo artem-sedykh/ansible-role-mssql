@@ -9,6 +9,25 @@ def is_database_available(connectionFactory, database):
             return cursor.rowcount != 0
 
 
+def has_drop_user(connectionFactory, user_name, database):
+    _sql_command = '''
+    if exists(select name from sys.database_principals where name = %(user_name)s) 
+        begin 
+            select 1;
+        end
+    else
+        begin
+            select 0;
+        end
+    '''
+
+    with connectionFactory.connect(database=database) as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(_sql_command.format(user_name), dict(user_name=user_name))
+            row = cursor.fetchone()
+            return bool(row[0])
+
+
 def drop_user(connectionFactory, user_name, database):
     _sql_command = '''
     if exists(select name from sys.database_principals where name = %(user_name)s) 
@@ -25,6 +44,32 @@ def drop_user(connectionFactory, user_name, database):
     with connectionFactory.connect(database=database) as conn:
         with conn.cursor() as cursor:
             cursor.execute(_sql_command.format(user_name), dict(user_name=user_name))
+            row = cursor.fetchone()
+            conn.commit()
+            return bool(row[0])
+
+
+def has_create_user(connectionFactory, user_name, login, database):
+    _sql_command = '''
+                        if not exists(select name from sys.database_principals where name = %(user_name)s) 
+                            begin 
+                                select 1;
+                            end
+                        else
+                            begin
+                                if not exists (select 1 from sys.database_principals sdp inner join sys.server_principals ssp on ssp.sid = sdp.sid and ssp.name = %(user_name)s and sdp.name = %(user_name)s)
+                                    begin
+                                        select 1
+                                    end
+                                else
+                                    begin
+                                        select 0;
+                                    end
+                        end'''
+
+    with connectionFactory.connect(database=database) as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(_sql_command.format(user_name, login), dict(user_name=user_name))
             row = cursor.fetchone()
             conn.commit()
             return bool(row[0])
@@ -66,7 +111,7 @@ def get_user_roles(connectionFactory, user_name, database):
     where mp.name = %(user_name)s
     '''
     with connectionFactory.connect(database=database) as conn:
-        with conn.cursor() as cursor:
+        with conn.cursor(as_dict=True) as cursor:
             cursor.execute(_sql_command, dict(user_name=user_name))
             roles = []
             for row in cursor:
@@ -100,6 +145,14 @@ def remove_user_role(connectionFactory, user_name, role_name, database, sql_serv
             cursor.execute(_sql_command, dict(role_name=role_name, user_name=user_name))
             conn.commit()
             return True
+
+
+def has_sync_user_roles(connectionFactory, user_name, roles, database, sql_server_version=10):
+    current_user_roles = get_user_roles(connectionFactory, user_name, database)
+    deleted = set(current_user_roles) - set(roles)
+    add = set(roles) - set(current_user_roles)
+
+    return len(deleted) > 0 or len(add)
 
 
 def sync_user_roles(connectionFactory, user_name, roles, database, sql_server_version=10):
