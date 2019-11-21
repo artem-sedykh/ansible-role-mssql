@@ -1,13 +1,15 @@
 import ansible.module_utils.sql_utils as sql_utils
+import ansible.module_utils.sql_utils_users as sql_utils_users
 
 
 class SqlDatabase(object):
 
-    def __init__(self, name, roles=[]):
+    def __init__(self, name, state="present", roles=[]):
         """Constructor
          :type roles: str
          """
         self.name = name
+        self.state = state
         self.roles = roles
 
     @staticmethod
@@ -17,11 +19,15 @@ class SqlDatabase(object):
         for key, value in json_databases.items():
             name = key
             roles = []
+            state = "present"
 
             if 'roles' in value:
                 roles = value['roles']
 
-            sql_databases.append(SqlDatabase(name, roles))
+            if 'state' in value:
+                state = value['state']
+
+            sql_databases.append(SqlDatabase(name, state, roles))
 
         return sql_databases
 
@@ -33,6 +39,33 @@ class SqlUser(object):
         """
         self.databases = databases
         self.name = name
+
+    def apply(self, connectionFactory, login):
+
+        changed = False
+
+        for database in self.databases:
+            database_name = database.name
+            roles = database.roles
+            database_state = database.state
+            user_name = self.name
+
+            if not sql_utils_users.is_database_available(connectionFactory, database_name):
+                continue
+
+            if database_state == "absent":
+                if sql_utils_users.drop_user(connectionFactory, user_name, database_name):
+                    changed = True
+
+            if database_state == "present":
+
+                if sql_utils_users.create_user(connectionFactory, user_name, login, database_name):
+                    changed = True
+
+                if sql_utils_users.sync_user_roles(connectionFactory, user_name, roles, database_name):
+                    changed = True
+
+        return changed
 
     @staticmethod
     def parse(json_user):
@@ -99,6 +132,9 @@ class SqlLogin(object):
 
         if self.state == "absent" and login_exists and sql_utils.drop_login(connectionFactory, self.login):
             changes.append("[dropped]")
+
+        for user in self.users:
+            user.apply(connectionFactory, self.login)
 
         return changes
 
@@ -178,6 +214,11 @@ class SqlLogin(object):
 
             if 'users' in value:
                 users = SqlUser.parse(value['users'])
+
+            if state == "absent":
+                for user in users:
+                    for database in user.databases:
+                        database.state = state
 
             sql_login = SqlLogin(login, sid, password, default_database, default_language, enabled, state, users)
 
