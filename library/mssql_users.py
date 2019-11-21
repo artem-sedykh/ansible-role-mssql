@@ -142,7 +142,7 @@ def main():
 
     changed = False
 
-    sql_logins_changes = []
+    sql_logins_changes = {}
 
     for sql_login in sql_logins.values():
         try:
@@ -158,7 +158,7 @@ def main():
                 changed = True
 
         except Exception as e:
-            module.fail_json(msg="login: [%s], error: %s" % (sql_login.name, str(e)))
+            module.fail_json(msg="login: [%s], error: %s" % (sql_login.login, str(e)))
 
     module.exit_json(changed=changed, changes=sql_logins_changes)
 

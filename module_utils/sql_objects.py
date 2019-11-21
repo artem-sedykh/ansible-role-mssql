@@ -1,6 +1,8 @@
-import ansible.module_utils.sql_utils as sql_utils
-import ansible.module_utils.sql_utils_users as sql_utils_users
+# import ansible.module_utils.sql_utils as sql_utils
+# import ansible.module_utils.sql_utils_users as sql_utils_users
 
+import sql_utils as sql_utils
+import sql_utils_users as sql_utils_users
 
 class SqlDatabase(object):
 

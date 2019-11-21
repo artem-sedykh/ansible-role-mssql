@@ -1,0 +1,9 @@
+{
+    "ansible_test_login": {
+            "state": "present",
+            "password": "12asdasdzqSSSddddd33",
+            "default_database": "AWAD_TaxesV2"
+    }
+
+    
+}
