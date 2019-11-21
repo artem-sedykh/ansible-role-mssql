@@ -1,6 +1,6 @@
 ---
 galaxy_info:
-  role_name: mssql
+  role_name: mssql_users
   author: artem.sedykh
   description: Additional modules for managing MSSQL server
   company: Activated, Inc.
@@ -8,4 +8,6 @@ galaxy_info:
   min_ansible_version: 2.4
   galaxy_tags:
     - mssql
+    - mssql-users
+
 dependencies: []
