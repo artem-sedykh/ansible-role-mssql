@@ -1,0 +1,11 @@
+---
+
+  - name: synchronization logins, users and permissions
+    mssql_users:
+      host: '{{ mssql_host }}'
+      port: '{{ mssql_host_port }}'
+      login: '{{ mssql_login }}'
+      password: '{{ mssql_password }}'
+      sources: '{{ sources }}'
+    delegate_to: localhost
+    register: out
