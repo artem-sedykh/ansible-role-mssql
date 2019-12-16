@@ -3,7 +3,7 @@
   - name: synchronization logins, users and permissions
     mssql_users:
       host: '{{ mssql_host }}'
-      port: '{{ mssql_host_port }}'
+      port: '{{ mssql_host_port | default(1433) }}'
       login: '{{ mssql_login }}'
       password: '{{ mssql_password }}'
       sources: '{{ sources }}'

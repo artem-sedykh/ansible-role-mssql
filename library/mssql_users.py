@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 # -*- coding: utf-8 -*-
 
 # (c) 2019, Artem Sedykh <artem.sedykh@anywayanyday.com>
