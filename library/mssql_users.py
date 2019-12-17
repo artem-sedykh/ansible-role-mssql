@@ -115,9 +115,7 @@ def main():
     factory = ConnectionFactory(login_querystring, login, password)
 
     try:
-        with factory.connect() as conn:
-            with conn.cursor():
-                print("connected")
+        sql_server_version = factory.get_sql_server_version()
     except Exception as e:
         if "Unknown database" in str(e):
             errno, errstr = e.args
@@ -125,6 +123,11 @@ def main():
         else:
             module.fail_json(
                 msg="unable to connect to {0}, check login and password are correct".format(host))
+
+    major_sql_server_version = int(sql_server_version.split('.')[0])
+
+    if major_sql_server_version not in [10, 12]:
+        module.fail_json(msg="sql server version {0} not supported".format(sql_server_version))
 
     sql_logins = {}
 
@@ -142,14 +145,14 @@ def main():
 
     changed = False
 
-    sql_logins_changes = {}
+    sql_logins_changes = {'sql_server_version':sql_server_version}
 
     for sql_login in sql_logins.values():
         try:
             if module.check_mode:
-                result = sql_login.get_changes(factory)
+                result = sql_login.get_changes(factory, sql_server_version)
             else:
-                result = sql_login.apply(factory)
+                result = sql_login.apply(factory, sql_server_version)
 
             sql_login_changed = result[0]
 

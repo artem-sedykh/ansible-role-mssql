@@ -40,9 +40,11 @@ class SqlUser(object):
         self.databases = databases
         self.name = name
 
-    def get_changes(self, connectionFactory, login):
+    def get_changes(self, connectionFactory, login, sql_server_version):
 
         changed = False
+
+        major_sql_server_version = int(sql_server_version.split('.')[0])
 
         changes = {}
 
@@ -70,7 +72,7 @@ class SqlUser(object):
                     database_changes["create_user"] = True
                     database_changed = True
 
-                if sql_utils_users.has_sync_user_roles(connectionFactory, user_name, roles, database_name):
+                if sql_utils_users.has_sync_user_roles(connectionFactory, user_name, roles, database_name, major_sql_server_version):
                     database_changes["sync_user_roles"] = True
                     database_changed = True
 
@@ -81,9 +83,11 @@ class SqlUser(object):
 
         return changed, changes
 
-    def apply(self, connectionFactory, login):
+    def apply(self, connectionFactory, login, sql_server_version):
 
         changed = False
+
+        major_sql_server_version = int(sql_server_version.split('.')[0])
 
         changes = {}
 
@@ -111,7 +115,7 @@ class SqlUser(object):
                     database_changes["create_user"] = True
                     database_changed = True
 
-                if sql_utils_users.sync_user_roles(connectionFactory, user_name, roles, database_name):
+                if sql_utils_users.sync_user_roles(connectionFactory, user_name, roles, database_name, major_sql_server_version):
                     database_changes["sync_user_roles"] = True
                     database_changed = True
 
@@ -164,7 +168,7 @@ class SqlLogin(object):
         self.state = state
         self.users = users
 
-    def apply(self, connectionFactory):
+    def apply(self, connectionFactory, sql_server_version):
 
         login_exists = sql_utils.login_exists(connectionFactory, self.login)
 
@@ -207,7 +211,7 @@ class SqlLogin(object):
             changed = True
 
         for user in self.users:
-            user_result = user.apply(connectionFactory, self.login)
+            user_result = user.apply(connectionFactory, self.login, sql_server_version)
 
             if user_result[0]:
                 users_changes[user.name] = {"databases": user_result[1]}
@@ -218,7 +222,7 @@ class SqlLogin(object):
 
         return changed, changes
 
-    def get_changes(self, connectionFactory):
+    def get_changes(self, connectionFactory, sql_server_version):
 
         changes = {}
         users_changes = {}
@@ -266,7 +270,7 @@ class SqlLogin(object):
                 changed = True
 
         for user in self.users:
-            user_result = user.get_changes(connectionFactory, self.login)
+            user_result = user.get_changes(connectionFactory, self.login, sql_server_version)
 
             if user_result[0]:
                 users_changes[user.name] = {"databases": user_result[1]}
