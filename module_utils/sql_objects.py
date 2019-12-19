@@ -220,7 +220,7 @@ class SqlLogin(object):
         if users_changed:
             changes["users"] = users_changes
 
-        return changed, changes
+        return changed, changes, self.login
 
     def get_changes(self, connectionFactory, sql_server_version):
 
@@ -279,7 +279,7 @@ class SqlLogin(object):
         if users_changed:
             changes["users"] = users_changes
 
-        return changed, changes
+        return changed, changes, self.login
 
     @staticmethod
     def parse(json_logins):

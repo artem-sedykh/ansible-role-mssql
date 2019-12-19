@@ -9,9 +9,11 @@ from __future__ import absolute_import, division, print_function
 
 __metaclass__ = type
 
+import time
+
 ANSIBLE_METADATA = {'metadata_version': '1.1',
                     'status': ['preview'],
-                    'supported_by': 'activated'}
+                    'supported_by': 'artem.sedykh'}
 
 DOCUMENTATION = '''
 ---
@@ -77,6 +79,15 @@ except ImportError:
 else:
     mssql_found = True
 
+try:
+    import multiprocessing
+    from joblib import Parallel, delayed
+except ImportError:
+    JOBLIB_IMP_ERR = traceback.format_exc()
+    joblib_found = False
+else:
+    joblib_found = True
+
 from ansible.module_utils.basic import AnsibleModule, missing_required_lib
 
 
@@ -96,6 +107,9 @@ def main():
     if not mssql_found:
         module.fail_json(msg=missing_required_lib('pymssql'), exception=PYMSSQL_IMP_ERR)
 
+    if not joblib_found:
+        module.fail_json(msg=missing_required_lib('joblib'), exception=JOBLIB_IMP_ERR)
+
     from ansible.module_utils.sql_objects import SqlLogin
     from ansible.module_utils.db_provider import ConnectionFactory
 
@@ -112,6 +126,7 @@ def main():
     if login != "" and password == "":
         module.fail_json(msg="when supplying login arguments password must be provided")
 
+    start_time = time.time()
     factory = ConnectionFactory(login_querystring, login, password)
 
     try:
@@ -145,26 +160,36 @@ def main():
 
     changed = False
 
-    sql_logins_changes = {'sql_server_version':sql_server_version}
+    num_cores = multiprocessing.cpu_count()
 
-    for sql_login in sql_logins.values():
+    sql_logins_changes = {'sql_server_version':sql_server_version, 'cpu_count': num_cores}
+
+    def apply_sql_login(sql_login):
         try:
             if module.check_mode:
                 result = sql_login.get_changes(factory, sql_server_version)
             else:
                 result = sql_login.apply(factory, sql_server_version)
 
-            sql_login_changed = result[0]
-
-            if sql_login_changed:
-                sql_logins_changes[sql_login.login] = result[1]
-                changed = True
-
         except Exception as e:
             module.fail_json(msg="login: [%s], error: %s" % (sql_login.login, str(e)))
 
-    module.exit_json(changed=changed, changes=sql_logins_changes)
+        return result
 
+    results = Parallel(n_jobs=num_cores)(delayed(apply_sql_login)(sql_login) for sql_login in sql_logins.values())
+
+    end_time = time.time()
+
+    sql_logins_changes['execution_time']= end_time - start_time
+
+    for result in results:
+        if result[0]:
+            key = result[2]
+            sql_logins_changes[key] = result[1]
+            changed = True
+
+    module.exit_json(changed=changed, changes=sql_logins_changes)
 
 if __name__ == '__main__':
     main()
+
