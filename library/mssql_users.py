@@ -162,34 +162,52 @@ def main():
 
     num_cores = multiprocessing.cpu_count()
 
-    sql_logins_changes = {'sql_server_version':sql_server_version, 'cpu_count': num_cores}
+    module_info = {'sql_server_version':sql_server_version, 'cpu_count': num_cores}
+    sql_logins_errors = {}
+    sql_logins_changes = {}
 
     def apply_sql_login(sql_login):
+
+        model = {"changed":False, "error":False, "error_message": None, "login": sql_login.login}
+
         try:
             if module.check_mode:
                 result = sql_login.get_changes(factory, sql_server_version)
             else:
                 result = sql_login.apply(factory, sql_server_version)
 
-        except Exception as e:
-            module.fail_json(msg="login: [%s], error: %s" % (sql_login.login, str(e)))
+            if result[0]:
+                model["changes"] = result[1]
+                model["changed"] = True
 
-        return result
+        except Exception as e:
+            model["error"] = True
+            model["error_message"] = str(e)
+
+        return model
 
     results = Parallel(n_jobs=num_cores)(delayed(apply_sql_login)(sql_login) for sql_login in sql_logins.values())
 
     end_time = time.time()
 
-    sql_logins_changes['execution_time']= end_time - start_time
+    module_info['execution_time']= end_time - start_time
 
     for result in results:
-        if result[0]:
-            key = result[2]
-            sql_logins_changes[key] = result[1]
+
+        key = result["login"]
+
+        if result["changed"]:
+            sql_logins_changes[key] = result["changes"]
             changed = True
 
-    module.exit_json(changed=changed, changes=sql_logins_changes)
+        if result["error"]:
+            sql_logins_errors[key] = result["error_message"]
+            changed = True
+
+    module_info["changes"] = sql_logins_changes
+    module_info["errors"] = sql_logins_errors
+
+    module.exit_json(changed=changed, changes=module_info)
 
 if __name__ == '__main__':
     main()
-

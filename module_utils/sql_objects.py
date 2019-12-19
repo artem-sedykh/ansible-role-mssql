@@ -59,6 +59,7 @@ class SqlUser(object):
             if not sql_utils_users.is_database_available(connectionFactory, database_name):
                 database_changes["database_unavailable"] = True
                 changes[database_name] = database_changes
+                changed = True
                 continue
 
             if database_state == "absent":
@@ -175,7 +176,6 @@ class SqlLogin(object):
         changes = {}
         users_changes = {}
         changed = False
-        users_changed = False
 
         if self.state == "present":
 
@@ -215,10 +215,10 @@ class SqlLogin(object):
 
             if user_result[0]:
                 users_changes[user.name] = {"databases": user_result[1]}
-                users_changed = True
 
-        if users_changed:
+        if users_changes:
             changes["users"] = users_changes
+            changed = True
 
         return changed, changes, self.login
 
@@ -227,7 +227,6 @@ class SqlLogin(object):
         changes = {}
         users_changes = {}
         changed = False
-        users_changed = False
 
         login_exists = sql_utils.login_exists(connectionFactory, self.login)
 
@@ -274,10 +273,10 @@ class SqlLogin(object):
 
             if user_result[0]:
                 users_changes[user.name] = {"databases": user_result[1]}
-                users_changed = True
 
-        if users_changed:
+        if users_changes:
             changes["users"] = users_changes
+            changed = True
 
         return changed, changes, self.login
 
