@@ -1,15 +1,15 @@
 import pymssql
 
 
-def is_database_available(connectionFactory, database):
-    with connectionFactory.connect() as conn:
+def is_database_available(connection_factory, database):
+    with connection_factory.connect() as conn:
         with conn.cursor() as cursor:
             cursor.execute("select database_id from sys.databases where name = %(database)s and is_read_only = 0 and "
                            "[state] = 0", dict(database=database))
             return cursor.rowcount != 0
 
 
-def has_drop_user(connectionFactory, user_name, database):
+def has_drop_user(connection_factory, user_name, database):
     _sql_command = '''
     if exists(select name from sys.database_principals where name = %(user_name)s) 
         begin 
@@ -21,14 +21,14 @@ def has_drop_user(connectionFactory, user_name, database):
         end
     '''
 
-    with connectionFactory.connect(database=database) as conn:
+    with connection_factory.connect(database=database) as conn:
         with conn.cursor() as cursor:
             cursor.execute(_sql_command.format(user_name), dict(user_name=user_name))
             row = cursor.fetchone()
             return bool(row[0])
 
 
-def drop_user(connectionFactory, user_name, database):
+def drop_user(connection_factory, user_name, database):
     _sql_command = '''
     if exists(select name from sys.database_principals where name = %(user_name)s) 
         begin
@@ -41,7 +41,7 @@ def drop_user(connectionFactory, user_name, database):
         end
     '''
 
-    with connectionFactory.connect(database=database) as conn:
+    with connection_factory.connect(database=database) as conn:
         with conn.cursor() as cursor:
             cursor.execute(_sql_command.format(user_name), dict(user_name=user_name))
             row = cursor.fetchone()
@@ -49,7 +49,7 @@ def drop_user(connectionFactory, user_name, database):
             return bool(row[0])
 
 
-def has_create_user(connectionFactory, user_name, login, database):
+def has_create_user(connection_factory, user_name, login, database):
     _sql_command = '''
                         if not exists(select name from sys.database_principals where name = %(user_name)s) 
                             begin 
@@ -67,7 +67,7 @@ def has_create_user(connectionFactory, user_name, login, database):
                                     end
                         end'''
 
-    with connectionFactory.connect(database=database) as conn:
+    with connection_factory.connect(database=database) as conn:
         with conn.cursor() as cursor:
             cursor.execute(_sql_command.format(user_name, login), dict(user_name=user_name))
             row = cursor.fetchone()
@@ -75,7 +75,7 @@ def has_create_user(connectionFactory, user_name, login, database):
             return bool(row[0])
 
 
-def create_user(connectionFactory, user_name, login, database):
+def create_user(connection_factory, user_name, login, database):
     _sql_command = '''
                         if not exists(select name from sys.database_principals where name = %(user_name)s) 
                             begin 
@@ -95,7 +95,7 @@ def create_user(connectionFactory, user_name, login, database):
                                     end
                         end'''
 
-    with connectionFactory.connect(database=database) as conn:
+    with connection_factory.connect(database=database) as conn:
         with conn.cursor() as cursor:
             cursor.execute(_sql_command.format(user_name, login), dict(user_name=user_name))
             row = cursor.fetchone()
@@ -103,14 +103,14 @@ def create_user(connectionFactory, user_name, login, database):
             return bool(row[0])
 
 
-def get_user_roles(connectionFactory, user_name, database):
+def get_user_roles(connection_factory, user_name, database):
     _sql_command = '''
     select rp.name as database_role from sys.database_role_members drm
         inner join sys.database_principals rp on (drm.role_principal_id = rp.principal_id)
         inner join sys.database_principals mp on (drm.member_principal_id = mp.principal_id)
     where mp.name = %(user_name)s
     '''
-    with connectionFactory.connect(database=database) as conn:
+    with connection_factory.connect(database=database) as conn:
         with conn.cursor(as_dict=True) as cursor:
             cursor.execute(_sql_command, dict(user_name=user_name))
             roles = []
@@ -121,52 +121,52 @@ def get_user_roles(connectionFactory, user_name, database):
             return roles
 
 
-def add_user_role(connectionFactory, user_name, role_name, database, sql_server_version=12):
+def add_user_role(connection_factory, user_name, role_name, database, sql_server_version=12):
     if sql_server_version == 12:
         _sql_command = "alter role [{0}] add member [{1}]"
     else:
         _sql_command = "exec sp_addrolemember %(role_name)s, %(user_name)s"
 
-    with connectionFactory.connect(database=database) as conn:
+    with connection_factory.connect(database=database) as conn:
         with conn.cursor() as cursor:
             cursor.execute(_sql_command.format(role_name, user_name), dict(role_name=role_name, user_name=user_name))
             conn.commit()
             return True
 
 
-def remove_user_role(connectionFactory, user_name, role_name, database, sql_server_version=12):
+def remove_user_role(connection_factory, user_name, role_name, database, sql_server_version=12):
     if sql_server_version == 12:
         _sql_command = "alter role [{0}] drop member [{1}]"
     else:
         _sql_command = "exec sp_droprolemember %(role_name)s, %(user_name)s"
 
-    with connectionFactory.connect(database=database) as conn:
+    with connection_factory.connect(database=database) as conn:
         with conn.cursor() as cursor:
             cursor.execute(_sql_command.format(role_name, user_name), dict(role_name=role_name, user_name=user_name))
             conn.commit()
             return True
 
 
-def has_sync_user_roles(connectionFactory, user_name, roles, database, sql_server_version=10):
-    current_user_roles = get_user_roles(connectionFactory, user_name, database)
+def has_sync_user_roles(connection_factory, user_name, roles, database):
+    current_user_roles = get_user_roles(connection_factory, user_name, database)
     deleted = set(current_user_roles) - set(roles)
     add = set(roles) - set(current_user_roles)
 
     return len(deleted) > 0 or len(add)
 
 
-def sync_user_roles(connectionFactory, user_name, roles, database, sql_server_version=10):
-    current_user_roles = get_user_roles(connectionFactory, user_name, database)
+def sync_user_roles(connection_factory, user_name, roles, database, sql_server_version=10):
+    current_user_roles = get_user_roles(connection_factory, user_name, database)
     deleted = set(current_user_roles) - set(roles)
     add = set(roles) - set(current_user_roles)
     changed = False
 
     for role in deleted:
-        if remove_user_role(connectionFactory, user_name, role, database, sql_server_version):
+        if remove_user_role(connection_factory, user_name, role, database, sql_server_version):
             changed = True
 
     for role in add:
-        if add_user_role(connectionFactory, user_name, role, database, sql_server_version):
+        if add_user_role(connection_factory, user_name, role, database, sql_server_version):
             changed = True
 
     return changed
