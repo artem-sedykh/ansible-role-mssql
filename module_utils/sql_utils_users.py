@@ -5,7 +5,7 @@ def is_database_available(connectionFactory, database):
     with connectionFactory.connect() as conn:
         with conn.cursor() as cursor:
             cursor.execute("select database_id from sys.databases where name = %(database)s and is_read_only = 0 and "
-                           "[state] = 0 and collation_name is not null", dict(database=database))
+                           "[state] = 0", dict(database=database))
             return cursor.rowcount != 0
 
 
