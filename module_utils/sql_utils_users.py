@@ -103,6 +103,21 @@ def create_user(connection_factory, user_name, login, database):
             return bool(row[0])
 
 
+def get_available_roles(connection_factory):
+    _sql_command = '''
+    SELECT rl.name AS [database_role] FROM sys.database_principals AS rl WHERE (rl.type = 'R') ORDER BY [database_role] ASC
+    '''
+    with connection_factory.connect() as conn:
+        with conn.cursor(as_dict=True) as cursor:
+            cursor.execute(_sql_command)
+            roles = []
+            for row in cursor:
+                role = row["database_role"]
+                roles.append(role)
+
+            return roles
+
+
 def get_user_roles(connection_factory, user_name, database):
     _sql_command = '''
     select rp.name as database_role from sys.database_role_members drm
