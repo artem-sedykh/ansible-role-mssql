@@ -147,7 +147,13 @@ def main():
     sql_logins = {}
 
     for path in sources:
-        for file_path in glob.glob(path):
+        file_paths = glob.glob(path)
+
+        if not file_paths:
+            module.log('no files found for source: {0}'.format(path))
+            continue
+
+        for file_path in file_paths:
             try:
                 with open(file_path, "r") as read_file:
                     data = json.load(read_file)
