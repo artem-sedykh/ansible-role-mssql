@@ -2,16 +2,16 @@ import pymssql
 import hashlib
 
 
-def is_sql_server_available(connectionFactory):
+def is_sql_server_available(connection_factory):
     """Метод поверяет можно ли подключиться к базе данных
     Args:
-        connectionFactory (ConnectionFactory): коннект к базе данных
+        connection_factory (connection_factory): коннект к базе данных
 
     Returns:
         bool: Метод возвращает True к базе данных можно подключиться, в противном случае False.
     """
     try:
-        with connectionFactory.connect() as conn:
+        with connection_factory.connect() as conn:
             with conn.cursor() as cursor:
                 cursor.execute("SELECT database_id FROM sys.databases WHERE name = %s", "tempdb")
                 return True
@@ -19,10 +19,10 @@ def is_sql_server_available(connectionFactory):
         return False
 
 
-def login_exists(connectionFactory, login):
+def login_exists(connection_factory, login):
     """Метод проверять существует ли логин.
     Args:
-        connectionFactory (ConnectionFactory): Коннект к базе данных
+        connection_factory (connection_factory): Коннект к базе данных
         login (str): логин пользователя
 
     Returns:
@@ -32,16 +32,16 @@ def login_exists(connectionFactory, login):
     if not login:
         raise ValueError("login cannot be empty")
 
-    with connectionFactory.connect() as conn:
+    with connection_factory.connect() as conn:
         with conn.cursor() as cursor:
             cursor.execute("SELECT NULL FROM master.sys.syslogins WHERE name = %(login)s", dict(login=login))
             return bool(cursor.rowcount)
 
 
-def create_login(connectionFactory, login, password=None, sid=None, default_database=None, default_language=None):
+def create_login(connection_factory, login, password=None, sid=None, default_database=None, default_language=None):
     """Метод создает логин.
     Args:
-        connectionFactory (ConnectionFactory): Коннект к базе данных
+        connection_factory (connection_factory): Коннект к базе данных
         login (str): логин пользователя
         password (str): пароль
         sid (str): использвется не в доменной авторизации
@@ -82,16 +82,16 @@ def create_login(connectionFactory, login, password=None, sid=None, default_data
     if options:
         sql += " with " + ", ".join(options)
 
-    with connectionFactory.connect() as conn:
+    with connection_factory.connect() as conn:
         with conn.cursor() as cursor:
             cursor.execute(sql)
             conn.commit()
 
 
-def has_change_default_database(connectionFactory, login, default_database):
+def has_change_default_database(connection_factory, login, default_database):
     """Метод проверяет нужно ли менять базу данных по умолчанию у существующего логина
     Args:
-        connectionFactory (ConnectionFactory): Коннект к базе данных
+        connection_factory (connection_factory): Коннект к базе данных
         login (str): логин пользователя
         default_database (str): база данных по умолчанию
 
@@ -110,7 +110,7 @@ def has_change_default_database(connectionFactory, login, default_database):
     changed = False
 
     if default_database:
-        with connectionFactory.connect() as conn:
+        with connection_factory.connect() as conn:
             with conn.cursor() as cursor:
                 cursor.execute(has_change_default_database_command.format(login, default_database),
                                dict(login=login, default_database=default_database))
@@ -120,10 +120,10 @@ def has_change_default_database(connectionFactory, login, default_database):
     return changed
 
 
-def has_change_default_language(connectionFactory, login, default_language):
+def has_change_default_language(connection_factory, login, default_language):
     """Метод проверяет нужно ли менять язык по умолчанию у существующего логина
     Args:
-        connectionFactory (ConnectionFactory): Коннект к базе данных
+        connection_factory (connection_factory): Коннект к базе данных
         login (str): логин пользователя
         default_language (str): язык по умолчанию
 
@@ -145,7 +145,7 @@ def has_change_default_language(connectionFactory, login, default_language):
     changed = False
 
     if default_language:
-        with connectionFactory.connect() as conn:
+        with connection_factory.connect() as conn:
             with conn.cursor() as cursor:
                 cursor.execute(has_change_default_language_command.format(login, default_language),
                                dict(login=login, default_language=default_language))
@@ -155,10 +155,10 @@ def has_change_default_language(connectionFactory, login, default_language):
     return changed
 
 
-def has_change_password(connectionFactory, login, password):
+def has_change_password(connection_factory, login, password):
     """Метод проверяет нужно ли менять базу данных по умолчанию у существующего логиа
     Args:
-        connectionFactory (ConnectionFactory): Коннект к базе данных
+        connection_factory (connection_factory): Коннект к базе данных
         login (str): логин пользователя
         password (str): пароль
 
@@ -184,7 +184,7 @@ def has_change_password(connectionFactory, login, password):
 
     changed = False
 
-    with connectionFactory.connect() as conn:
+    with connection_factory.connect() as conn:
         with conn.cursor() as cursor:
             cursor.execute(has_change_password_command.format(login, password), dict(login=login, password=password))
             row = cursor.fetchone()
@@ -193,10 +193,10 @@ def has_change_password(connectionFactory, login, password):
     return changed
 
 
-def is_enabled_login(connectionFactory, login):
+def is_enabled_login(connection_factory, login):
     """Метод проверяет включен ли логин
     Args:
-        connectionFactory (ConnectionFactory): Коннект к базе данных
+        connection_factory (connection_factory): Коннект к базе данных
         login (str): логин пользователя
 
     Returns:
@@ -205,7 +205,7 @@ def is_enabled_login(connectionFactory, login):
 
     is_enabled_login_command = "select ~is_disabled from sys.server_principals where name = %(login)s"
 
-    with connectionFactory.connect() as conn:
+    with connection_factory.connect() as conn:
         with conn.cursor() as cursor:
             cursor.execute(is_enabled_login_command, dict(login=login))
             row = cursor.fetchone()
@@ -213,10 +213,10 @@ def is_enabled_login(connectionFactory, login):
             return is_enabled
 
 
-def change_default_database(connectionFactory, login, default_database):
+def change_default_database(connection_factory, login, default_database):
     """Метод изменяет базу данных логин по умолчанию
     Args:
-        connectionFactory (ConnectionFactory): Коннект к базе данных
+        connection_factory (connection_factory): Коннект к базе данных
         login (str): логин пользователя
         default_database (str): база данных по умолчанию
 
@@ -237,7 +237,7 @@ def change_default_database(connectionFactory, login, default_database):
     if not default_database:
         return False
 
-    with connectionFactory.connect() as conn:
+    with connection_factory.connect() as conn:
         with conn.cursor() as cursor:
             cursor.execute(_alter_default_database_sql.format(login, default_database),
                            dict(login=login, default_database=default_database))
@@ -246,10 +246,10 @@ def change_default_database(connectionFactory, login, default_database):
             return bool(row[0])
 
 
-def change_default_language(connectionFactory, login, default_language):
+def change_default_language(connection_factory, login, default_language):
     """Метод изменяет язык логина по умолчанию
     Args:
-        connectionFactory (ConnectionFactory): Коннект к базе данных
+        connection_factory (connection_factory): Коннект к базе данных
         login (str): логин пользователя
         default_language (str): язык по умолчанию
 
@@ -271,7 +271,7 @@ def change_default_language(connectionFactory, login, default_language):
     if not default_language:
         return False
 
-    with connectionFactory.connect() as conn:
+    with connection_factory.connect() as conn:
         with conn.cursor() as cursor:
             cursor.execute(_alter_default_language_sql.format(login, default_language),
                            dict(login=login, default_language=default_language))
@@ -280,10 +280,10 @@ def change_default_language(connectionFactory, login, default_language):
             return bool(row[0])
 
 
-def change_password(connectionFactory, login, password):
+def change_password(connection_factory, login, password):
     """Метод изменяет пароль логина
     Args:
-        connectionFactory (ConnectionFactory): Коннект к базе данных
+        connection_factory (connection_factory): Коннект к базе данных
         login (str): логин пользователя
         password (str): пароль
 
@@ -312,7 +312,7 @@ def change_password(connectionFactory, login, password):
     if not password:
         return False
 
-    with connectionFactory.connect() as conn:
+    with connection_factory.connect() as conn:
         with conn.cursor() as cursor:
             cursor.execute(_alter_password_sql.format(login, password), dict(login=login, password=password))
             row = cursor.fetchone()
@@ -320,10 +320,10 @@ def change_password(connectionFactory, login, password):
             return bool(row[0])
 
 
-def disable_or_enable_login(connectionFactory, login, enabled=True):
+def disable_or_enable_login(connection_factory, login, enabled=True):
     """Метод изменяет пароль логина
     Args:
-        connectionFactory (ConnectionFactory): Коннект к базе данных
+        connection_factory (connection_factory): Коннект к базе данных
         login (str): логин пользователя
         enabled (bool): включена ли учетная запись
 
@@ -350,7 +350,7 @@ def disable_or_enable_login(connectionFactory, login, enabled=True):
                                         select 0
                                     end'''
 
-    with connectionFactory.connect() as conn:
+    with connection_factory.connect() as conn:
         with conn.cursor() as cursor:
             cursor.execute(_disable_or_enable_login_sql.format(login), dict(login=login, disabled=not enabled))
             row = cursor.fetchone()
@@ -358,10 +358,10 @@ def disable_or_enable_login(connectionFactory, login, enabled=True):
             return bool(row[0])
 
 
-def drop_login(connectionFactory, login):
+def drop_login(connection_factory, login):
     """Метод удаляет логин
     Args:
-        connectionFactory (ConnectionFactory): Коннект к базе данных
+        connection_factory (connection_factory): Коннект к базе данных
         login (str): логин пользователя
 
     Returns:
@@ -379,7 +379,7 @@ def drop_login(connectionFactory, login):
                             select 0;
                         end'''
 
-    with connectionFactory.connect() as conn:
+    with connection_factory.connect() as conn:
         with conn.cursor() as cursor:
             cursor.execute(_drop_login_sql.format(login), dict(login=login))
             row = cursor.fetchone()
