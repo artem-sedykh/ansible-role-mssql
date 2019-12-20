@@ -103,6 +103,7 @@ class SqlUser(object):
             if not sql_utils_users.is_database_available(connectionFactory, database_name):
                 database_changes["database_unavailable"] = True
                 changes[database_name] = database_changes
+                changed = True
                 continue
 
             if database_state == "absent":
