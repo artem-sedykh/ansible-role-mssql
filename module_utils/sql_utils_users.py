@@ -123,26 +123,26 @@ def get_user_roles(connectionFactory, user_name, database):
 
 def add_user_role(connectionFactory, user_name, role_name, database, sql_server_version=12):
     if sql_server_version == 12:
-        _sql_command = "alter role [%(role_name)s] add member [%(user_name)s]"
+        _sql_command = "alter role [{0}] add member [{1}]"
     else:
         _sql_command = "exec sp_addrolemember %(role_name)s, %(user_name)s"
 
     with connectionFactory.connect(database=database) as conn:
         with conn.cursor() as cursor:
-            cursor.execute(_sql_command, dict(role_name=role_name, user_name=user_name))
+            cursor.execute(_sql_command.format(role_name, user_name), dict(role_name=role_name, user_name=user_name))
             conn.commit()
             return True
 
 
 def remove_user_role(connectionFactory, user_name, role_name, database, sql_server_version=12):
     if sql_server_version == 12:
-        _sql_command = "alter role [%(role_name)s] drop member [%(user_name)s]"
+        _sql_command = "alter role [{0}] drop member [{1}]"
     else:
         _sql_command = "exec sp_droprolemember %(role_name)s, %(user_name)s"
 
     with connectionFactory.connect(database=database) as conn:
         with conn.cursor() as cursor:
-            cursor.execute(_sql_command, dict(role_name=role_name, user_name=user_name))
+            cursor.execute(_sql_command.format(role_name, user_name), dict(role_name=role_name, user_name=user_name))
             conn.commit()
             return True
 
