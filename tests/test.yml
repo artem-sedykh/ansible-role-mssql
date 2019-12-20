@@ -1,15 +1,14 @@
 ---
-- name: Sync sql logins
-  hosts: sql_servers
+
+- hosts: sql_servers
   gather_facts: no
   tasks:
-  - mssql_users:
-      host: '{{ sql_host }}'
-      login: '{{ sql_user }}'
-      password: '{{ sql_password }}'
-      sources:
-        - source\services\*.json
-    register: out
-    delegate_to: localhost
+    - import_role:
+       name: artem_sedykh.mssql_security
+      vars:
+        sources:
+          - users_1.json
+      register: out
+      delegate_to: localhost
 
-  - debug: var=out.changes
+    - debug: var=out

@@ -1,0 +1,13 @@
+{
+  "ansible_test_login2": {
+    "state": "present",
+    "password": "12asdasSSSdd33",
+    "users": {
+      "ansible_test_login2": {
+        "databases": {
+          "master": { "roles": [ "db_datareader", "db_datawriter" ] }
+        }
+      }
+    }
+  }
+}
