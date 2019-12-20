@@ -128,6 +128,7 @@ def main():
 
     start_time = time.time()
     factory = ConnectionFactory(login_querystring, login, password)
+    warnings = []
 
     try:
         sql_server_version = factory.get_sql_server_version()
@@ -136,8 +137,7 @@ def main():
             errno, errstr = e.args
             module.fail_json(msg="ERROR: %s %s" % (errno, errstr))
         else:
-            module.fail_json(
-                msg="unable to connect to {0}, check login and password are correct".format(host))
+            module.fail_json(msg="unable to connect to {0}, check login and password are correct".format(host))
 
     major_sql_server_version = int(sql_server_version.split('.')[0])
 
@@ -150,7 +150,9 @@ def main():
         file_paths = glob.glob(path)
 
         if not file_paths:
-            module.log('no files found for source: {0}'.format(path))
+            msg = "no files found for source: {0}".format(path)
+            module.log(msg)
+            warnings.append(msg)
             continue
 
         for file_path in file_paths:
@@ -159,7 +161,9 @@ def main():
                     data = json.load(read_file)
                     for item in SqlLogin.parse(data):
                         if item.login in sql_logins:
-                            module.log('Login duplication [{0}]'.format(item.login))
+                            msg = "Login duplication [{0}]".format(item.login)
+                            module.log(msg)
+                            warnings.append(msg)
                         sql_logins[item.login] = item
             except Exception as e:
                 module.fail_json(msg="file: %s, parse sql logins exception: %s" % (file_path, str(e)))
@@ -168,13 +172,13 @@ def main():
 
     num_cores = multiprocessing.cpu_count()
 
-    module_info = {'sql_server_version':sql_server_version, 'cpu_count': num_cores}
+    module_info = {'sql_server_version': sql_server_version, 'cpu_count': num_cores}
     sql_logins_errors = {}
     sql_logins_changes = {}
 
     def apply_sql_login(sql_login):
 
-        model = {"changed":False, "error":False, "error_message": None, "login": sql_login.login}
+        model = {"changed": False, "error": False, "error_message": None, "login": sql_login.login}
 
         try:
             if module.check_mode:
@@ -196,7 +200,8 @@ def main():
 
     end_time = time.time()
 
-    module_info['execution_time']= end_time - start_time
+    module_info['execution_time'] = end_time - start_time
+    module_info['sql_logins_count'] = len(sql_logins)
 
     for result in results:
 
@@ -210,10 +215,17 @@ def main():
             sql_logins_errors[key] = result["error_message"]
             changed = True
 
-    module_info["changes"] = sql_logins_changes
-    module_info["errors"] = sql_logins_errors
+    if warnings:
+        module_info["warnings"] = warnings
+
+    if sql_logins_changes:
+        module_info["changes"] = sql_logins_changes
+
+    if sql_logins_errors:
+        module_info["errors"] = sql_logins_errors
 
     module.exit_json(changed=changed, changes=module_info)
+
 
 if __name__ == '__main__':
     main()
