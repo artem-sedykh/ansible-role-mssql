@@ -127,11 +127,11 @@ def main():
         module.fail_json(msg="when supplying login arguments password must be provided")
 
     start_time = time.time()
-    factory = ConnectionFactory(login_querystring, login, password)
+    connection_factory = ConnectionFactory(login_querystring, login, password)
     warnings = []
 
     try:
-        sql_server_version = factory.get_sql_server_version()
+        sql_server_version = connection_factory.get_sql_server_version()
     except Exception as e:
         if "Unknown database" in str(e):
             errno, errstr = e.args
@@ -182,9 +182,9 @@ def main():
 
         try:
             if module.check_mode:
-                result = sql_login.get_changes(factory, sql_server_version)
+                result = sql_login.get_changes(connection_factory, sql_server_version)
             else:
-                result = sql_login.apply(factory, sql_server_version)
+                result = sql_login.apply(connection_factory, sql_server_version)
 
             if result[0]:
                 model["changes"] = result[1]
