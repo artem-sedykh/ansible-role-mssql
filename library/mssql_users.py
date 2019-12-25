@@ -88,7 +88,7 @@ except ImportError:
 else:
     joblib_found = True
 
-from ansible.module_utils.basic import AnsibleModule, missing_required_lib
+from ansible.module_utils.basic import AnsibleModule
 
 
 def main():
@@ -105,10 +105,10 @@ def main():
     )
 
     if not mssql_found:
-        module.fail_json(msg=missing_required_lib('pymssql'), exception=PYMSSQL_IMP_ERR)
+        module.fail_json(msg='required pymssql module', exception=PYMSSQL_IMP_ERR)
 
     if not joblib_found:
-        module.fail_json(msg=missing_required_lib('joblib'), exception=JOBLIB_IMP_ERR)
+        module.fail_json(msg='required joblib module', exception=JOBLIB_IMP_ERR)
 
     from ansible.module_utils.sql_objects import SqlLogin
     from ansible.module_utils.db_provider import ConnectionFactory
