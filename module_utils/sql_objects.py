@@ -62,6 +62,9 @@ class SqlUser(object):
                 changed = True
                 continue
 
+            if not sql_utils_users.is_primary_hadr_replica(connection_factory, database_name):
+                continue
+
             if database_state == "absent":
                 if sql_utils_users.has_drop_user(connection_factory, user_name, database_name):
                     database_changes["drop_user"] = True
@@ -104,6 +107,9 @@ class SqlUser(object):
                 database_changes["database_unavailable"] = True
                 changes[database_name] = database_changes
                 changed = True
+                continue
+
+            if not sql_utils_users.is_primary_hadr_replica(connection_factory, database_name):
                 continue
 
             if database_state == "absent":

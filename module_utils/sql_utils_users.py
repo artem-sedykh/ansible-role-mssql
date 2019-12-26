@@ -28,6 +28,15 @@ def has_drop_user(connection_factory, user_name, database):
             return bool(row[0])
 
 
+def is_primary_hadr_replica(connection_factory, database):
+    _sql_command = '''select coalesce(sys.fn_hadr_is_primary_replica(%(database_name)s), 1)'''
+
+    with connection_factory.connect(database=database) as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(_sql_command, dict(database_name=database))
+            row = cursor.fetchone()
+            return bool(row[0])
+
 def drop_user(connection_factory, user_name, database):
     _sql_command = '''
     if exists(select name from sys.database_principals where name = %(user_name)s) 
