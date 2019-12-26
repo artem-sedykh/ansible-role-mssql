@@ -137,7 +137,7 @@ def get_user_roles(connection_factory, user_name, database):
 
 
 def add_user_role(connection_factory, user_name, role_name, database, sql_server_version=12):
-    if sql_server_version == 12:
+    if sql_server_version in [12, 14]:
         _sql_command = "alter role [{0}] add member [{1}]"
     else:
         _sql_command = "exec sp_addrolemember %(role_name)s, %(user_name)s"
@@ -150,7 +150,7 @@ def add_user_role(connection_factory, user_name, role_name, database, sql_server
 
 
 def remove_user_role(connection_factory, user_name, role_name, database, sql_server_version=12):
-    if sql_server_version == 12:
+    if sql_server_version in [12, 14]:
         _sql_command = "alter role [{0}] drop member [{1}]"
     else:
         _sql_command = "exec sp_droprolemember %(role_name)s, %(user_name)s"

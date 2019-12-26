@@ -141,7 +141,7 @@ def main():
 
     major_sql_server_version = int(sql_server_version.split('.')[0])
 
-    if major_sql_server_version not in [10, 12]:
+    if major_sql_server_version not in [10, 12, 14]:
         module.fail_json(msg="sql server version {0} not supported".format(sql_server_version))
 
     sql_logins = {}
