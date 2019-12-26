@@ -62,7 +62,7 @@ class SqlUser(object):
                 changed = True
                 continue
 
-            if not sql_utils_users.is_primary_hadr_replica(connection_factory, database_name):
+            if major_sql_server_version >= 12 and not sql_utils_users.is_primary_hadr_replica(connection_factory, database_name):
                 continue
 
             if database_state == "absent":
@@ -109,7 +109,7 @@ class SqlUser(object):
                 changed = True
                 continue
 
-            if not sql_utils_users.is_primary_hadr_replica(connection_factory, database_name):
+            if major_sql_server_version >= 12 and not sql_utils_users.is_primary_hadr_replica(connection_factory, database_name):
                 continue
 
             if database_state == "absent":
