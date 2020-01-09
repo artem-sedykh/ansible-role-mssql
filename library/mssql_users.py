@@ -112,6 +112,7 @@ def main():
 
     from ansible.module_utils.sql_objects import SqlLogin
     from ansible.module_utils.db_provider import ConnectionFactory
+    from ansible.module_utils.sql_processor import SqlProcessor
 
     login = module.params['login']
     password = module.params['password']
@@ -173,56 +174,17 @@ def main():
     num_cores = multiprocessing.cpu_count()
 
     module_info = {'sql_server_version': sql_server_version, 'cpu_count': num_cores}
-    sql_logins_errors = {}
-    sql_logins_changes = {}
 
-    def apply_sql_login(sql_login):
-
-        model = {"changed": False, "error": False, "error_message": None, "login": sql_login.login}
-
-        try:
-            if module.check_mode:
-                result = sql_login.get_changes(connection_factory, sql_server_version)
-            else:
-                result = sql_login.apply(connection_factory, sql_server_version)
-
-            if result[0]:
-                model["changes"] = result[1]
-                model["changed"] = True
-
-        except Exception as e:
-            model["error"] = True
-            model["error_message"] = str(e)
-
-        return model
-
-    results = Parallel(n_jobs=num_cores)(delayed(apply_sql_login)(sql_login) for sql_login in sql_logins.values())
+    results = SqlProcessor.apply_sql_logins(sql_logins, connection_factory, sql_server_version, module.check_mode)
 
     end_time = time.time()
 
     module_info['execution_time'] = end_time - start_time
     module_info['sql_logins_count'] = len(sql_logins)
 
-    for result in results:
-
-        key = result["login"]
-
-        if result["changed"]:
-            sql_logins_changes[key] = result["changes"]
-            changed = True
-
-        if result["error"]:
-            sql_logins_errors[key] = result["error_message"]
-            changed = True
-
-    if warnings:
-        module_info["warnings"] = warnings
-
-    if sql_logins_changes:
-        module_info["changes"] = sql_logins_changes
-
-    if sql_logins_errors:
-        module_info["errors"] = sql_logins_errors
+    module_info['changes'] = results[0]
+    module_info['warnings'] = results[1]
+    module_info['errors'] = results[2]
 
     module.exit_json(changed=changed, changes=module_info)
 
