@@ -46,16 +46,6 @@ def apply_sql_logins(connection_factory, sql_logins, sql_server_version, check_m
     return changes, warnings, errors
 
 
-def __apply(connection_factory, check_mode, sql_login, default_roles, exist, major_sql_server_version):
-
-    if check_mode:
-        result = __get_sql_login_changes(connection_factory, sql_login, exist, default_roles, major_sql_server_version)
-    else:
-        result = __apply_sql_login(connection_factory, sql_login, exist, default_roles, major_sql_server_version)
-
-    return sql_login.login, result
-
-
 def __apply_sql_login(connection_factory, sql_login, exist, default_roles, sql_server_version):
     login = sql_login.login
 
@@ -91,7 +81,7 @@ def __apply_sql_login(connection_factory, sql_login, exist, default_roles, sql_s
                 if sql_utils.create_login(connection_factory, sql_login.login, sql_login.password, sql_login.sid,
                                           sql_login.default_database, sql_login.default_language):
 
-                    message = 'login {0} created'
+                    message = 'login {0} created'.format(sql_login.login)
 
                     from_windows = "\\" in login
 
@@ -291,7 +281,7 @@ def __get_sql_login_changes(connection_factory, sql_login, exist, default_roles,
         else:
 
             try:
-                message = 'login {0} created'
+                message = 'login {0} created'.format(sql_login.login)
 
                 from_windows = "\\" in login
 
