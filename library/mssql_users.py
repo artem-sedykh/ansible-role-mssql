@@ -112,7 +112,7 @@ def main():
 
     from ansible.module_utils.sql_objects import SqlLogin
     from ansible.module_utils.db_provider import ConnectionFactory
-    from ansible.module_utils.sql_processor import SqlProcessor
+    import ansible.module_utils.sql_processor as SqlProcessor
 
     login = module.params['login']
     password = module.params['password']
@@ -175,7 +175,7 @@ def main():
 
     module_info = {'sql_server_version': sql_server_version, 'cpu_count': num_cores}
 
-    results = SqlProcessor.apply_sql_logins(sql_logins, connection_factory, sql_server_version, module.check_mode)
+    results = SqlProcessor.apply_sql_logins(connection_factory, list(sql_logins.values()), sql_server_version, module.check_mode)
 
     end_time = time.time()
 

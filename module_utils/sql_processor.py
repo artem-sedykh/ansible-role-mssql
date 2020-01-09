@@ -1,21 +1,21 @@
 import hashlib
 import ansible.module_utils.sql_utils as sql_utils
+import multiprocessing
+from joblib import Parallel, delayed
 
-
-@staticmethod
 def apply_sql_logins(connection_factory, sql_logins, sql_server_version, check_mode):
 
     major_sql_server_version = int(sql_server_version.split('.')[0])
     default_roles = sql_utils.get_available_roles(connection_factory)
-    exists_logins = map(str.upper, sql_utils.logins_exists(connection_factory, (o.login for o in sql_logins)))
+    exists_logins = list(map(str.upper, sql_utils.logins_exists(connection_factory, list(o.login for o in sql_logins))))
 
     changes = {}
     warnings = {}
     errors = {}
-    # return changes, warnings, errors, True
-    # results = Parallel(n_jobs=num_cores)(delayed(apply_sql_login)(sql_login) for sql_login in sql_logins.values())
 
-    for sql_login in sql_logins:
+    num_cores = multiprocessing.cpu_count()
+
+    def _apply(sql_login):
 
         exist = sql_login.login.upper() in exists_logins
 
@@ -24,17 +24,36 @@ def apply_sql_logins(connection_factory, sql_logins, sql_server_version, check_m
         else:
             result = __apply_sql_login(connection_factory, sql_login, exist, default_roles, major_sql_server_version)
 
-        changes[sql_login.login] = {'changes': result[0], 'success': result[3]}
+        return sql_login.login, result
 
-        if result[1]:
-            warnings[sql_login.login] = result[1]
-            changes[sql_login.login]['warnings'] = result[1]
 
-        if result[2]:
-            errors[sql_login.login] = result[2]
-            changes[sql_login.login]['errors'] = result[2]
+    # return changes, warnings, errors, True
+    items = Parallel(n_jobs=num_cores)(delayed(_apply)(sql_login) for sql_login in sql_logins)
+
+    for item in items:
+        key = item[0]
+        login_changes = item[1]
+        changes[key] = {'changes': login_changes[0], 'success': login_changes[3]}
+
+        if login_changes[1]:
+            warnings[key] = login_changes[1]
+            changes[key]['warnings'] = login_changes[1]
+
+        if login_changes[2]:
+            errors[key] = login_changes[2]
+            changes[key]['errors'] = login_changes[2]
 
     return changes, warnings, errors
+
+
+def __apply(connection_factory, check_mode, sql_login, default_roles, exist, major_sql_server_version):
+
+    if check_mode:
+        result = __get_sql_login_changes(connection_factory, sql_login, exist, default_roles, major_sql_server_version)
+    else:
+        result = __apply_sql_login(connection_factory, sql_login, exist, default_roles, major_sql_server_version)
+
+    return sql_login.login, result
 
 
 def __apply_sql_login(connection_factory, sql_login, exist, default_roles, sql_server_version):
