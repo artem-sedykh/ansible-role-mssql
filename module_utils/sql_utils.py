@@ -86,6 +86,7 @@ def create_login(connection_factory, login, password=None, sid=None, default_dat
         with conn.cursor() as cursor:
             cursor.execute(sql)
             conn.commit()
+            return True
 
 
 def has_change_default_database(connection_factory, login, default_database):

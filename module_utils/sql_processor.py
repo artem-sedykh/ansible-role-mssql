@@ -56,79 +56,79 @@ def __apply_sql_login(connection_factory, sql_login, exist, default_roles, sql_s
     if sql_login.state == "present":
 
         if exist:
+            options = []
 
             try:
                 if sql_utils.change_default_database(connection_factory, sql_login.login, sql_login.default_database):
-                    changes.append('default database changed to: {0}'.format(sql_login.default_database))
+                    options.append('DEFAULT_DATABASE: {0}'.format(sql_login.default_database))
             except Exception as e:
-                errors.append('error occurred while changing the default database: ' + str(e))
+                errors.append('[LOGIN: {0}] ERROR OCCIRRED WHILE CHANGING DEFAULT_DATABASE: {1}: {2}'.format(sql_login.login, sql_login.default_database, str(e)))
 
             try:
                 if sql_utils.change_default_language(connection_factory, sql_login.login, sql_login.default_language):
-                    changes.append('default language changed to: {0}'.format(sql_login.default_language))
+                    options.append('DEFAULT_LANGUAGE: {0}'.format(sql_login.default_language))
             except Exception as e:
-                errors.append('error occurred while changing the default language: ' + str(e))
+                errors.append('[LOGIN: {0}] ERROR OCCIRRED WHILE CHANGING DEFAULT_LANGUAGE: {1}: {2}'.format(sql_login.login, sql_login.default_language, str(e)))
 
             try:
                 if sql_utils.change_password(connection_factory, sql_login.login, sql_login.password):
-                    changes.append('password changed to: *****'.format(sql_login.default_language))
+                    options.append('PASSWORD: *****')
             except Exception as e:
-                errors.append('error occurred while changing password: ' + str(e))
+                errors.append('[LOGIN: {0}] ERROR OCCIRRED WHILE CHANGING PASSWORD: {1}'.format(sql_login.login, str(e)))
+
+            if options:
+                changes.append('[LOGIN: {0}; {1}] - CHANGED'.format(sql_login.login, "; ".join(options)))
 
         else:
 
             try:
-                if sql_utils.create_login(connection_factory, sql_login.login, sql_login.password, sql_login.sid,
-                                          sql_login.default_database, sql_login.default_language):
-
-                    message = 'login {0} created'.format(sql_login.login)
-
-                    from_windows = "\\" in login
-
-                    if from_windows:
-                        message += ' from windows'
+                if sql_utils.create_login(connection_factory, sql_login.login, sql_login.password, sql_login.sid, sql_login.default_database, sql_login.default_language):
 
                     options = []
+                    from_windows = "\\" in login
+
+                    options.append('LOGIN: {0}'.format(sql_login.login))
+
+                    if from_windows:
+                        options.append('TYPE: WINDOWS')
 
                     if not from_windows:
 
                         if sql_login.sid:
-                            options.append("sid: {0}".format(sql_login.sid))
+                            options.append("SID: {0}".format(sql_login.sid))
                         else:
                             sid = "0x" + hashlib.md5(login.upper().encode('utf-8')).hexdigest()
-                            options.append("sid: {0}".format(sid))
+                            options.append("SID: {0}".format(sid))
 
                         if sql_login.password:
-                            options.append("password: *****")
+                            options.append("PASSWORD: *****")
 
                     if sql_login.default_language:
-                        options.append("default_language: {0}".format(sql_login.default_language))
+                        options.append("DEFAULT_LANGUAGE: {0}".format(sql_login.default_language))
 
                     if sql_login.default_database:
-                        options.append("default_database: {0}".format(sql_login.default_database))
+                        options.append("DEFAULT_DATABASE: {0}".format(sql_login.default_database))
 
-                    if options:
-                        message += " with " + ", ".join(options)
+                    changes.append('[{0}] - [CREATED]'.format("; ".join(options)))
 
-                    changes.append(message)
             except Exception as e:
-                errors.append('error occurred while creating login: ' + str(e))
+                errors.append('[LOGIN: {0}] ERROR OCCIRRED WHILE CREATING: {1}'.format(sql_login.login, str(e)))
                 return changes, warnings, errors, False
 
         if sql_login.enabled:
 
             try:
                 if sql_utils.disable_or_enable_login(connection_factory, sql_login.login, sql_login.enabled):
-                    changes.append('login {0} enabled'.format(sql_login.login))
+                    changes.append('[LOGIN: {0}] - [ENABLED]'.format(sql_login.login))
             except Exception as e:
-                errors.append('error occurred while enabled login: {0} '.format(sql_login.login) + str(e))
+                errors.append('[LOGIN: {0}] ERROR OCCIRRED WHILE ENABLED: {1}'.format(sql_login.login, str(e)))
 
         else:
             try:
                 if sql_utils.disable_or_enable_login(connection_factory, sql_login.login, sql_login.enabled):
-                    changes.append('login {0} disabled'.format(sql_login.login))
+                    changes.append('[LOGIN: {0}] - [DISABLED]'.format(sql_login.login))
             except Exception as e:
-                errors.append('error occurred while disabled login: {0} '.format(sql_login.login) + str(e))
+                errors.append('[LOGIN: {0}] ERROR OCCIRRED WHILE DISABLED: {1}'.format(sql_login.login, str(e)))
 
     if sql_login.state == "absent":
 
@@ -136,9 +136,9 @@ def __apply_sql_login(connection_factory, sql_login, exist, default_roles, sql_s
 
             try:
                 if sql_utils.drop_login(connection_factory, sql_login.login):
-                    changes.append('login {0} dropped'.format(sql_login.login))
+                    changes.append('[LOGIN: {0}] - [DROPPED]'.format(sql_login.login))
             except Exception as e:
-                errors.append('error occurred while drop login {0}: '.format(sql_login.login) + str(e))
+                errors.append('[LOGIN: {0}] ERROR OCCIRRED WHILE DROP: {1}'.format(sql_login.login, str(e)))
                 return changes, warnings, errors, False
 
     for user in sql_login.users:
@@ -151,89 +151,74 @@ def __apply_sql_login(connection_factory, sql_login, exist, default_roles, sql_s
 
             try:
                 if not sql_utils.is_database_available(connection_factory, database_name):
-                    warnings.append('database: {0} unavailable'.format(database_name))
+                    warnings.append('[DB: {0}] - UNAVAILABLE'.format(database_name))
                     continue
             except Exception as e:
-                errors.append('error occurred while check database availability: {0} '.format(database_name) + str(e))
+                errors.append('[DB: {0}] ERROR OCCIRRED WHILE CHECK DATABASE AVAILABILITY: {1}'.format(database_name, str(e)))
                 continue
 
             try:
                 if sql_server_version >= 12 and not sql_utils.is_primary_hadr_replica(connection_factory,
                                                                                       database_name):
-                    warnings.append('database: {0} is not primary hadr replica'.format(database_name))
+                    warnings.append('[DB: {0}] - IS NOT PRIMARY HADR REPLICA'.format(database_name))
                     continue
             except Exception as e:
-                errors.append('error occurred while check database: {0} on sys.fn_hadr_is_primary_replica: '.format(
-                    database_name) + str(e))
+                errors.append('[DB: {0}] ERROR OCCIRRED WHILE CHECK PRIMARY HADR REPLICA(sys.fn_hadr_is_primary_replica): {1}'.format(database_name, str(e)))
                 continue
 
             if database_state == 'absent':
                 try:
                     if sql_utils.drop_user(connection_factory, user_name, database_name):
-                        changes.append('database: {1}, user {0} dropped'.format(user_name, database_name))
+                        changes.append('[DB: {1}] USER: [{0}] - [DROPPED]'.format(user_name, database_name))
                 except Exception as e:
-                    errors.append(
-                        'error occurred while drop user: {0}, database: {1}; '.format(user_name, database_name) + str(
-                            e))
+                    errors.append('[DB: {1}]: ERROR OCCURRED WHILE DROP USER: [{0}]; {2}'.format(user_name, database_name, str(e)))
                     continue
 
             if database_state == 'present':
                 try:
                     if sql_utils.create_user(connection_factory, user_name, login, database_name):
-                        changes.append('database {1}, user {0} created'.format(user_name, database_name))
+                        changes.append('[DB: {1}] USER: [{0}] - [CREATED]'.format(user_name, database_name))
                 except Exception as e:
-                    errors.append(
-                        'error occurred while create user: {0}, database: {1}; '.format(user_name, database_name) + str(
-                            e))
+                    errors.append('[DB: {1}]: ERROR OCCURRED WHILE CREATE USER: [{0}]; {2}'.format(user_name, database_name, str(e)))
                     continue
 
                 for role in database.roles:
                     if role.upper() in map(str.upper, default_roles):
                         roles.append(role)
                     else:
-                        warnings.append(
-                            'database {1}, user {0} sql role: {2} unavailable, available roles: {3}'.format(user_name,
-                                                                                                            database_name,
-                                                                                                            role,
-                                                                                                            ", ".join(
-                                                                                                                default_roles)))
+                        warnings.append('[DB: {1}; USER: {0}]: SQL ROLE: [{2}] - UNAVAILABLE, AVAILABLE ROLES - [{3}]'.format(user_name, database_name, role, ", ".join(default_roles)))
 
                 try:
                     current_user_roles = sql_utils.get_user_roles(connection_factory, user_name, database_name)
 
                     deleted = set(current_user_roles) - set(roles)
                     add = set(roles) - set(current_user_roles)
+                    added_roles = []
+                    removed_roles = []
 
                     for role in deleted:
                         try:
-                            if sql_utils.remove_user_role(connection_factory, user_name, role, database_name,
-                                                          sql_server_version):
-                                changes.append(
-                                    'database {1}, user {0}, role: {2} removed'.format(user_name, database_name, role))
+                            if sql_utils.remove_user_role(connection_factory, user_name, role, database_name, sql_server_version):
+                                removed_roles.append(role)
                         except Exception as e:
-                            errors.append(
-                                'error occurred while remove role: {2} user: {0}, database: {1}; '.format(user_name,
-                                                                                                          database_name,
-                                                                                                          role) + str(
-                                    e))
+                            errors.append('[DB: {1}; USER: {0}]: ERROR OCCURRED WHILE REMOVE ROLE: {2} - {3}'.format(user_name, database_name, role, str(e)))
 
                     for role in add:
                         try:
-                            if sql_utils.add_user_role(connection_factory, user_name, role, database_name,
-                                                       sql_server_version):
-                                changes.append(
-                                    'database {1}, user {0}, role: {2} added'.format(user_name, database_name, role))
+                            if sql_utils.add_user_role(connection_factory, user_name, role, database_name, sql_server_version):
+                                added_roles.append(role)
                         except Exception as e:
-                            errors.append(
-                                'error occurred while add role: {2} to user: {0}, database: {1}; '.format(user_name,
-                                                                                                          database_name,
-                                                                                                          role) + str(
-                                    e))
+                            errors.append('[DB: {1}; USER: {0}]: ERROR OCCURRED WHILE ADD ROLE: {2} - {3}'.format(user_name, database_name, role, str(e)))
+                    
+                    if removed_roles:
+                        changes.append('[DB: {1}; USER: {0}]: REMOVED ROLES - [{2}]'.format(user_name, database_name, ", ".join(removed_roles)))
+
+                    if added_roles:
+                        changes.append('[DB: {1}; USER: {0}]: ADDED ROLES - [{2}]'.format(user_name, database_name, ", ".join(added_roles)))
 
                 except Exception as e:
-                    errors.append('error occurred while get user: {0} roles in database: {1}; '.format(user_name,
-                                                                                                       database_name) + str(
-                        e))
+                    errors.append('[DB: {1}; USER: {0}]: ERROR OCCURRED WHILE GET USER ROLES: - {2}'.format(user_name, database_name, str(e)))
+
 
     return changes, warnings, errors, True
 
@@ -249,74 +234,76 @@ def __get_sql_login_changes(connection_factory, sql_login, exist, default_roles,
 
         if exist:
 
+            options = []
+
             try:
                 if sql_utils.has_change_default_database(connection_factory, sql_login.login, sql_login.default_database):
-                    changes.append('default database changed to: {0}'.format(sql_login.default_database))
+                    options.append('DEFAULT_DATABASE: {0}'.format(sql_login.default_database))
             except Exception as e:
-                errors.append('error occurred while changing the default database: ' + str(e))
+                errors.append('[LOGIN: {0}] ERROR OCCIRRED WHILE CHANGING DEFAULT_DATABASE: {1}: {2}'.format(sql_login.login, sql_login.default_database, str(e)))
 
             try:
                 if sql_utils.has_change_default_language(connection_factory, sql_login.login, sql_login.default_language):
-                    changes.append('default language changed to: {0}'.format(sql_login.default_language))
+                    options.append('DEFAULT_LANGUAGE: {0}'.format(sql_login.default_language))
             except Exception as e:
-                errors.append('error occurred while changing the default language: ' + str(e))
+                errors.append('[LOGIN: {0}] ERROR OCCIRRED WHILE CHANGING DEFAULT_LANGUAGE: {1}: {2}'.format(sql_login.login, sql_login.default_language, str(e)))
 
             try:
                 if sql_utils.has_change_password(connection_factory, sql_login.login, sql_login.password):
-                    changes.append('password changed to: *****'.format(sql_login.default_language))
+                    options.append('PASSWORD: *****')
             except Exception as e:
-                errors.append('error occurred while changing password: ' + str(e))
+                errors.append('[LOGIN: {0}] ERROR OCCIRRED WHILE CHANGING PASSWORD: {1}'.format(sql_login.login, str(e)))
 
             try:
                 is_enabled_login = sql_utils.is_enabled_login(connection_factory, sql_login.login)
 
                 if sql_login.enabled and not is_enabled_login:
-                    changes.append('login {0} enabled'.format(sql_login.login))
+                    options.append('STATE: ENABLED')
 
                 if not sql_login.enabled and is_enabled_login:
-                    changes.append('login {0} disabled'.format(sql_login.login))
+                    options.append('STATE: DISABLED')
+
             except Exception as e:
-                errors.append('error occurred while disabled/enabled login: {0} '.format(sql_login.login) + str(e))
+                errors.append('[LOGIN: {0}] ERROR OCCIRRED WHILE DISABLE/ENABLE: {1}'.format(sql_login.login, str(e)))
+            
+            if options:
+                changes.append('[LOGIN: {0}; {1}] - CHANGED'.format(sql_login.login, "; ".join(options)))
 
         else:
 
             try:
-                message = 'login {0} created'.format(sql_login.login)
-
+                options = []
                 from_windows = "\\" in login
 
-                if from_windows:
-                    message += ' from windows'
+                options.append('LOGIN: {0}'.format(sql_login.login))
 
-                options = []
+                if from_windows:
+                    options.append('TYPE: WINDOWS')
 
                 if not from_windows:
 
                     if sql_login.sid:
-                        options.append("sid: {0}".format(sql_login.sid))
+                        options.append("SID: {0}".format(sql_login.sid))
                     else:
                         sid = "0x" + hashlib.md5(login.upper().encode('utf-8')).hexdigest()
-                        options.append("sid: {0}".format(sid))
+                        options.append("SID: {0}".format(sid))
 
                     if sql_login.password:
-                        options.append("password: *****")
+                        options.append("PASSWORD: *****")
 
                 if sql_login.default_language:
-                    options.append("default_language: {0}".format(sql_login.default_language))
+                    options.append("DEFAULT_LANGUAGE: {0}".format(sql_login.default_language))
 
                 if sql_login.default_database:
-                    options.append("default_database: {0}".format(sql_login.default_database))
+                    options.append("DEFAULT_DATABASE: {0}".format(sql_login.default_database))
 
-                if options:
-                    message += " with " + ", ".join(options)
-
-                changes.append(message)
+                changes.append('[{0}] - [CREATED]'.format("; ".join(options)))
             except Exception as e:
-                errors.append('error occurred while creating login: ' + str(e))
+                errors.append('[LOGIN: {0}] ERROR OCCIRRED WHILE CREATING: {1}'.format(sql_login.login, str(e)))
                 return changes, warnings, errors, False
 
     if sql_login.state == "absent" and exist:
-        changes.append('login {0} dropped'.format(sql_login.login))
+        changes.append('[LOGIN: {0}] - [DROPPED]'.format(sql_login.login))
 
     for user in sql_login.users:
 
@@ -328,44 +315,41 @@ def __get_sql_login_changes(connection_factory, sql_login, exist, default_roles,
 
             try:
                 if not sql_utils.is_database_available(connection_factory, database_name):
-                    warnings.append('database: {0} unavailable'.format(database_name))
+                    warnings.append('[DB: {0}] - UNAVAILABLE'.format(database_name))
                     continue
             except Exception as e:
-                errors.append('error occurred while check database availability: {0} '.format(database_name) + str(e))
+                errors.append('[DB: {0}] ERROR OCCIRRED WHILE CHECK DATABASE AVAILABILITY: {1}'.format(database_name, str(e)))
                 continue
 
             try:
                 if sql_server_version >= 12 and not sql_utils.is_primary_hadr_replica(connection_factory, database_name):
-                    warnings.append('database: {0} is not primary hadr replica'.format(database_name))
+                    warnings.append('[DB: {0}] - IS NOT PRIMARY HADR REPLICA'.format(database_name))
                     continue
             except Exception as e:
-                errors.append('error occurred while check database: {0} on sys.fn_hadr_is_primary_replica: '.format(
-                    database_name) + str(e))
+                errors.append('[DB: {0}] ERROR OCCIRRED WHILE CHECK PRIMARY HADR REPLICA(sys.fn_hadr_is_primary_replica): {1}'.format(database_name, str(e)))
                 continue
 
             if database_state == 'absent':
                 try:
                     if sql_utils.has_drop_user(connection_factory, user_name, database_name):
-                        changes.append('database: {1}, user {0} dropped'.format(user_name, database_name))
+                        changes.append('[DB: {1}] USER: [{0}] - [DROPPED]'.format(user_name, database_name))
                 except Exception as e:
-                    errors.append(
-                        'error occurred while drop user: {0}, database: {1}; '.format(user_name, database_name) + str(
-                            e))
+                    errors.append('[DB: {1}]: ERROR OCCURRED WHILE DROP USER: [{0}]; {2}'.format(user_name, database_name, str(e)))
                     continue
 
             if database_state == 'present':
                 try:
                     if sql_utils.has_create_user(connection_factory, user_name, login, database_name):
-                        changes.append('database {1}, user {0} created'.format(user_name, database_name))
+                        changes.append('[DB: {1}] USER: [{0}] - [CREATED]'.format(user_name, database_name))
                 except Exception as e:
-                    errors.append('error occurred while create user: {0}, database: {1}; '.format(user_name, database_name) + str(e))
+                    errors.append('[DB: {1}]: ERROR OCCURRED WHILE CREATE USER: [{0}]; {2}'.format(user_name, database_name, str(e)))
                     continue
 
                 for role in database.roles:
                     if role.upper() in map(str.upper, default_roles):
                         roles.append(role)
                     else:
-                        warnings.append('database {1}, user {0} sql role: {2} unavailable, available roles: {3}'.format(user_name, database_name, role, ", ".join(default_roles)))
+                        warnings.append('[DB: {1}; USER: {0}]: SQL ROLE: [{2}] - UNAVAILABLE, AVAILABLE ROLES - [{3}]'.format(user_name, database_name, role, ", ".join(default_roles)))
 
                 try:
                     current_user_roles = sql_utils.get_user_roles(connection_factory, user_name, database_name)
@@ -373,13 +357,13 @@ def __get_sql_login_changes(connection_factory, sql_login, exist, default_roles,
                     deleted = set(current_user_roles) - set(roles)
                     add = set(roles) - set(current_user_roles)
 
-                    for role in deleted:
-                        changes.append('database {1}, user {0}, role: {2} removed'.format(user_name, database_name, role))
+                    if deleted:
+                        changes.append('[DB: {1}; USER: {0}]: REMOVED ROLES - [{2}]'.format(user_name, database_name, ", ".join(deleted)))
 
-                    for role in add:
-                        changes.append('database {1}, user {0}, role: {2} added'.format(user_name, database_name, role))
+                    if add:
+                        changes.append('[DB: {1}; USER: {0}]: ADDED ROLES - [{2}]'.format(user_name, database_name, ", ".join(add)))
 
                 except Exception as e:
-                    errors.append('error occurred while get user: {0} roles in database: {1}; '.format(user_name, database_name) + str(e))
+                    errors.append('[DB: {1}; USER: {0}]: ERROR OCCURRED WHILE GET USER ROLES; {2}'.format(user_name, database_name, str(e)))
 
     return changes, warnings, errors, True
