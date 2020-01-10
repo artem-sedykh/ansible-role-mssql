@@ -21,7 +21,9 @@ class SqlDatabase(object):
                 roles = value['roles']
 
             if 'state' in value:
-                state = value['state']
+                state = value['state'].lower()
+                if state not in ['present', 'absent']:
+                    raise Exception('db: {0} state: "{1}" parsing error, availables state: present or absent'.format(name, state))
 
             sql_databases.append(SqlDatabase(name, state, roles))
 
@@ -50,7 +52,9 @@ class SqlUser(object):
                 databases = SqlDatabase.parse(value['databases'])
 
             if 'state' in value:
-                state = value['state']
+                state = value['state'].lower()
+                if state not in ['present', 'absent']:
+                    raise Exception('user: {0} state: "{1}" parsing error, availables state: present or absent'.format(user_name, state))
 
             if state == "absent":
                 for database in databases:
@@ -104,11 +108,10 @@ class SqlLogin(object):
             if 'default_language' in value:
                 default_language = value['default_language']
 
-            if 'sid' in value:
-                sid = value['sid']
-
             if 'state' in value:
-                state = value['state']
+                state = value['state'].lower()
+                if state not in ['present', 'absent']:
+                    raise Exception('login: {0} state: "{1}" parsing error, availables state: present or absent'.format(login, state))
 
             if 'enabled' in value:
                 enabled = bool(value['enabled'])
