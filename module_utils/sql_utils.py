@@ -602,4 +602,31 @@ def sync_user_roles(connection_factory, user_name, roles, database, sql_server_v
 
     return changed
 
+
+def create_db_executor_role(connection_factory, database):
+    _sql_command = '''
+    begin tran
+
+    if not exists(select NULL from sys.database_principals as rl where (rl.type = 'R') and rl.[name] = 'db_executor')
+        begin
+            create role db_executor
+            grant execute to db_executor
+            commit tran
+            select 1;
+        end
+    else
+        begin
+            rollback tran
+            select 0;
+        end
+    '''
+
+    with connection_factory.connect(database=database) as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(_sql_command)
+            row = cursor.fetchone()
+            conn.commit()
+            return bool(row[0])
+
+
 # endregion

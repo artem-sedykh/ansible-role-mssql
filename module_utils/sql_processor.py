@@ -191,6 +191,16 @@ def __apply_sql_login(connection_factory, sql_login, exist, sql_server_version):
                 errors.append('[DB: {0}] ERROR OCCIRRED WHILE GET AVAILABLE ROLES: {1}'.format(database_name, str(e)))
                 continue
 
+            if 'db_executor' in database.roles and 'db_executor' not in default_roles:
+                try:
+                    if sql_utils.create_db_executor_role(connection_factory, database_name):
+                        changes.append('[DB: {0}] CREATE ROLE db_executor'.format(database_name))
+
+                    default_roles.append('db_executor')
+                except Exception as e:
+                    errors.append('[DB: {0}]: create role db_executor and grant execute to db_executor exception: {1}'.format(database_name, str(e)))
+                    continue
+
             if database_state == 'present':
                 try:
                     if sql_utils.create_user(connection_factory, user_name, login, database_name):
@@ -368,6 +378,10 @@ def __get_sql_login_changes(connection_factory, sql_login, exist, sql_server_ver
             except Exception as e:
                 errors.append('[DB: {0}] ERROR OCCIRRED WHILE GET AVAILABLE ROLES: {1}'.format(database_name, str(e)))
                 continue
+
+            if 'db_executor' in database.roles and 'db_executor' not in default_roles:
+                default_roles.append('db_executor')
+                changes.append('[DB: {0}] CREATE ROLE db_executor'.format(database_name))
 
             if database_state == 'present':
                 try:
