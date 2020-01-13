@@ -154,6 +154,14 @@ def __apply_sql_login(connection_factory, sql_login, exist, sql_server_version):
             default_roles = []
 
             try:
+                if sql_server_version == 10 and sql_utils.is_mirror_database(connection_factory, database_name):
+                    warnings.append('[DB: {0}] - IS MIRROR DATABASE'.format(database_name))
+                    continue
+            except Exception as e:
+                errors.append('[DB: {0}] ERROR OCCIRRED WHILE CHECK MIRRORING: {1}'.format(database_name, str(e)))
+                continue
+
+            try:
                 if not sql_utils.is_database_available(connection_factory, database_name):
                     warnings.append('[DB: {0}] - UNAVAILABLE'.format(database_name))
                     continue
@@ -162,8 +170,7 @@ def __apply_sql_login(connection_factory, sql_login, exist, sql_server_version):
                 continue
 
             try:
-                if sql_server_version >= 12 and not sql_utils.is_primary_hadr_replica(connection_factory,
-                                                                                      database_name):
+                if sql_server_version >= 12 and not sql_utils.is_primary_hadr_replica(connection_factory, database_name):
                     warnings.append('[DB: {0}] - IS NOT PRIMARY HADR REPLICA'.format(database_name))
                     continue
             except Exception as e:
@@ -323,6 +330,14 @@ def __get_sql_login_changes(connection_factory, sql_login, exist, sql_server_ver
             database_state = database.state
             user_name = user.name
             default_roles = [] 
+
+            try:
+                if sql_server_version == 10 and sql_utils.is_mirror_database(connection_factory, database_name):
+                    warnings.append('[DB: {0}] - IS MIRROR DATABASE'.format(database_name))
+                    continue
+            except Exception as e:
+                errors.append('[DB: {0}] ERROR OCCIRRED WHILE CHECK MIRRORING: {1}'.format(database_name, str(e)))
+                continue
 
             try:
                 if not sql_utils.is_database_available(connection_factory, database_name):

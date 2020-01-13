@@ -429,6 +429,21 @@ def is_primary_hadr_replica(connection_factory, database):
             return bool(row[0])
 
 
+def is_mirror_database(connection_factory, database):
+    _sql_command = '''
+    if exists(SELECT null FROM sys.database_mirroring AS sd WHERE mirroring_guid IS NOT null and db_name(sd.[database_id]) = %(database_name)s and sd.mirroring_role=2)
+        select 1;
+    else
+        select 0;
+    '''
+
+    with connection_factory.connect(database="master") as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(_sql_command, dict(database_name=database))
+            row = cursor.fetchone()
+            return bool(row[0])
+
+
 def drop_user(connection_factory, user_name, database):
     _sql_command = '''
     if exists(select name from sys.database_principals where name = %(user_name)s) 
