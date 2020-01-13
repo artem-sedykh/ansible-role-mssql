@@ -33,7 +33,11 @@ def apply_sql_logins(connection_factory, sql_logins, sql_server_version, check_m
     for item in items:
         key = item[0]
         login_changes = item[1]
-        changes[key] = {'changes': login_changes[0], 'success': login_changes[3]}
+        changes[key] = { 'success': login_changes[3], 'changed': False }
+
+        if login_changes[0]:
+            changes[key]['changes'] = login_changes[0]
+            changes[key]['changed'] = True
 
         if login_changes[1]:
             warnings[key] = login_changes[1]

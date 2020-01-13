@@ -13,7 +13,7 @@ class SqlDatabase(object):
         sql_databases = []
 
         for key, value in json_databases.items():
-            name = key
+            name = key.strip()
             roles = []
             state = "present"
 
@@ -45,7 +45,7 @@ class SqlUser(object):
         sql_users = []
 
         for key, value in json_user.items():
-            user_name = key
+            user_name = key.strip()
             databases = []
             state = "present"
 
@@ -89,7 +89,7 @@ class SqlLogin(object):
         sql_logins = []
 
         for key, value in json_logins.items():
-            login = key
+            login = key.strip()
             sid = None
             password = None
             default_database = None
