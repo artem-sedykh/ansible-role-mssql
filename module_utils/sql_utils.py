@@ -504,11 +504,11 @@ def create_user(connection_factory, user_name, login, database):
             return bool(row[0])
 
 
-def get_available_roles(connection_factory):
+def get_available_roles(connection_factory, database='master'):
     _sql_command = '''
     SELECT rl.name AS [database_role] FROM sys.database_principals AS rl WHERE (rl.type = 'R') ORDER BY [database_role] ASC
     '''
-    with connection_factory.connect() as conn:
+    with connection_factory.connect(database=database) as conn:
         with conn.cursor(as_dict=True) as cursor:
             cursor.execute(_sql_command)
             roles = []

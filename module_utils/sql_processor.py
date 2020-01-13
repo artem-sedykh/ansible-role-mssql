@@ -6,7 +6,6 @@ from joblib import Parallel, delayed
 def apply_sql_logins(connection_factory, sql_logins, sql_server_version, check_mode):
 
     major_sql_server_version = int(sql_server_version.split('.')[0])
-    default_roles = sql_utils.get_available_roles(connection_factory)
     exists_logins = list(map(str.upper, sql_utils.logins_exists(connection_factory, list(o.login for o in sql_logins))))
 
     changes = {}
@@ -20,9 +19,9 @@ def apply_sql_logins(connection_factory, sql_logins, sql_server_version, check_m
         exist = sql_login.login.upper() in exists_logins
 
         if check_mode:
-            result = __get_sql_login_changes(connection_factory, sql_login, exist, default_roles, major_sql_server_version)
+            result = __get_sql_login_changes(connection_factory, sql_login, exist, major_sql_server_version)
         else:
-            result = __apply_sql_login(connection_factory, sql_login, exist, default_roles, major_sql_server_version)
+            result = __apply_sql_login(connection_factory, sql_login, exist, major_sql_server_version)
 
         return sql_login.login, result
 
@@ -35,7 +34,7 @@ def apply_sql_logins(connection_factory, sql_logins, sql_server_version, check_m
         login_changes = item[1]
         changes[key] = { 'success': login_changes[3], 'changed': False }
 
-        if login_changes[0]:
+        if login_changes[0]:            
             changes[key]['changes'] = login_changes[0]
             changes[key]['changed'] = True
 
@@ -50,7 +49,7 @@ def apply_sql_logins(connection_factory, sql_logins, sql_server_version, check_m
     return changes, warnings, errors
 
 
-def __apply_sql_login(connection_factory, sql_login, exist, default_roles, sql_server_version):
+def __apply_sql_login(connection_factory, sql_login, exist, sql_server_version):
     login = sql_login.login
 
     changes = []
@@ -152,6 +151,7 @@ def __apply_sql_login(connection_factory, sql_login, exist, default_roles, sql_s
             roles = []
             database_state = database.state
             user_name = user.name
+            default_roles = []
 
             try:
                 if not sql_utils.is_database_available(connection_factory, database_name):
@@ -177,6 +177,12 @@ def __apply_sql_login(connection_factory, sql_login, exist, default_roles, sql_s
                 except Exception as e:
                     errors.append('[DB: {1}]: ERROR OCCURRED WHILE DROP USER: [{0}]; {2}'.format(user_name, database_name, str(e)))
                     continue
+
+            try:
+                default_roles = sql_utils.get_available_roles(connection_factory, database_name)
+            except Exception as e:
+                errors.append('[DB: {0}] ERROR OCCIRRED WHILE GET AVAILABLE ROLES: {1}'.format(database_name, str(e)))
+                continue
 
             if database_state == 'present':
                 try:
@@ -227,7 +233,7 @@ def __apply_sql_login(connection_factory, sql_login, exist, default_roles, sql_s
     return changes, warnings, errors, True
 
 
-def __get_sql_login_changes(connection_factory, sql_login, exist, default_roles, sql_server_version):
+def __get_sql_login_changes(connection_factory, sql_login, exist, sql_server_version):
     login = sql_login.login
 
     changes = []
@@ -316,6 +322,7 @@ def __get_sql_login_changes(connection_factory, sql_login, exist, default_roles,
             roles = []
             database_state = database.state
             user_name = user.name
+            default_roles = [] 
 
             try:
                 if not sql_utils.is_database_available(connection_factory, database_name):
@@ -340,6 +347,12 @@ def __get_sql_login_changes(connection_factory, sql_login, exist, default_roles,
                 except Exception as e:
                     errors.append('[DB: {1}]: ERROR OCCURRED WHILE DROP USER: [{0}]; {2}'.format(user_name, database_name, str(e)))
                     continue
+
+            try:
+                default_roles = sql_utils.get_available_roles(connection_factory, database_name)
+            except Exception as e:
+                errors.append('[DB: {0}] ERROR OCCIRRED WHILE GET AVAILABLE ROLES: {1}'.format(database_name, str(e)))
+                continue
 
             if database_state == 'present':
                 try:
