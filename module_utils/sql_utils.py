@@ -24,7 +24,7 @@ def login_exists(connection_factory, login):
 
 def logins_exists(connection_factory, logins):
     if not logins:
-        return None
+        return []
 
     with connection_factory.connect() as conn:
         with conn.cursor(as_dict=True) as cursor:
