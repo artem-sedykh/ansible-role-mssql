@@ -185,6 +185,7 @@ def main():
     module_info['changes'] = results[0]
     module_info['warnings'] = results[1]
     module_info['errors'] = results[2]
+    changed = results[3]
 
     module.exit_json(changed=changed, changes=module_info)
 

@@ -28,15 +28,17 @@ def apply_sql_logins(connection_factory, sql_logins, sql_server_version, check_m
 
     # return changes, warnings, errors, True
     items = Parallel(n_jobs=num_cores)(delayed(_apply)(sql_login) for sql_login in sql_logins)
+    changed = False
 
     for item in items:
         key = item[0]
         login_changes = item[1]
         changes[key] = { 'success': login_changes[3], 'changed': False }
 
-        if login_changes[0]:            
+        if login_changes[0]:
             changes[key]['changes'] = login_changes[0]
             changes[key]['changed'] = True
+            changed = True
 
         if login_changes[1]:
             warnings[key] = login_changes[1]
@@ -46,7 +48,7 @@ def apply_sql_logins(connection_factory, sql_logins, sql_server_version, check_m
             errors[key] = login_changes[2]
             changes[key]['errors'] = login_changes[2]
 
-    return changes, warnings, errors
+    return changes, warnings, errors, changed
 
 
 def __apply_sql_login(connection_factory, sql_login, exist, sql_server_version):
