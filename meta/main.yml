@@ -8,6 +8,8 @@ galaxy_info:
   min_ansible_version: 2.7
   galaxy_tags:
     - mssql
-    - mssql_security
+    - security
+    - logins
+    - users
 
 dependencies: []
