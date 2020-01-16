@@ -178,7 +178,7 @@ def __apply_sql_login(connection_factory, sql_login, sql_server_version):
                     if role.upper() in map(str.upper, default_roles):
                         roles.append(role)
                     else:
-                        warnings.append('[DB: {1}; USER: {0}]: SQL ROLE: [{2}] - UNAVAILABLE, AVAILABLE ROLES - [{3}]'.format(user_name, database_name, role, ", ".join(default_roles)))
+                        warnings.append('[DB: {1}; USER: {0}]: SQL ROLE: [{2}] - UNAVAILABLE'.format(user_name, database_name, role))
 
                 try:
                     current_user_roles = sql_utils.get_user_roles(connection_factory, user_name, database_name)
