@@ -1,62 +1,25 @@
 import hashlib
 import ansible.module_utils.sql_utils as sql_utils
-import multiprocessing
-from joblib import Parallel, delayed
 
-def apply_sql_logins(connection_factory, sql_logins, sql_server_version, check_mode):
+def apply_sql_login(connection_factory, sql_login, sql_server_version, check_mode):
 
-    major_sql_server_version = int(sql_server_version.split('.')[0])
-    exists_logins = list(map(str.upper, sql_utils.logins_exists(connection_factory, list(o.login for o in sql_logins))))
+    if check_mode:
+        result = __get_sql_login_changes(connection_factory, sql_login, sql_server_version)
+    else:
+        result = __apply_sql_login(connection_factory, sql_login, sql_server_version)
 
-    changes = {}
-    warnings = {}
-    errors = {}
+    return result
 
-    num_cores = multiprocessing.cpu_count()
-
-    def _apply(sql_login):
-
-        exist = sql_login.login.upper() in exists_logins
-
-        if check_mode:
-            result = __get_sql_login_changes(connection_factory, sql_login, exist, major_sql_server_version)
-        else:
-            result = __apply_sql_login(connection_factory, sql_login, exist, major_sql_server_version)
-
-        return sql_login.login, result
-
-
-    # return changes, warnings, errors, True
-    items = Parallel(n_jobs=num_cores)(delayed(_apply)(sql_login) for sql_login in sql_logins)
-    changed = False
-
-    for item in items:
-        key = item[0]
-        login_changes = item[1]
-        changes[key] = { 'success': login_changes[3], 'changed': False }
-
-        if login_changes[0]:
-            changes[key]['changes'] = login_changes[0]
-            changes[key]['changed'] = True
-            changed = True
-
-        if login_changes[1]:
-            warnings[key] = login_changes[1]
-            changes[key]['warnings'] = login_changes[1]
-
-        if login_changes[2]:
-            errors[key] = login_changes[2]
-            changes[key]['errors'] = login_changes[2]
-
-    return changes, warnings, errors, changed
-
-
-def __apply_sql_login(connection_factory, sql_login, exist, sql_server_version):
+def __apply_sql_login(connection_factory, sql_login, sql_server_version):
     login = sql_login.login
+
+    exist = sql_utils.login_exists(connection_factory, login)
 
     changes = []
     warnings = []
     errors = []
+    information = []
+    changed = False
 
     if sql_login.state == "present":
 
@@ -118,7 +81,7 @@ def __apply_sql_login(connection_factory, sql_login, exist, sql_server_version):
 
             except Exception as e:
                 errors.append('[LOGIN: {0}] ERROR OCCIRRED WHILE CREATING: {1}'.format(sql_login.login, str(e)))
-                return changes, warnings, errors, False
+                return changes, information, warnings, errors, False
 
         if sql_login.enabled:
 
@@ -144,7 +107,7 @@ def __apply_sql_login(connection_factory, sql_login, exist, sql_server_version):
                     changes.append('[LOGIN: {0}] - [DROPPED]'.format(sql_login.login))
             except Exception as e:
                 errors.append('[LOGIN: {0}] ERROR OCCIRRED WHILE DROP: {1}'.format(sql_login.login, str(e)))
-                return changes, warnings, errors, False
+                return changes, information, warnings, errors, False
 
     for user in sql_login.users:
 
@@ -157,7 +120,7 @@ def __apply_sql_login(connection_factory, sql_login, exist, sql_server_version):
 
             try:
                 if sql_server_version == 10 and sql_utils.is_mirror_database(connection_factory, database_name):
-                    warnings.append('[DB: {0}] - IS MIRROR DATABASE'.format(database_name))
+                    information.append('[DB: {0}] - IS MIRROR DATABASE'.format(database_name))
                     continue
             except Exception as e:
                 errors.append('[DB: {0}] ERROR OCCIRRED WHILE CHECK MIRRORING: {1}'.format(database_name, str(e)))
@@ -173,7 +136,7 @@ def __apply_sql_login(connection_factory, sql_login, exist, sql_server_version):
 
             try:
                 if sql_server_version >= 12 and not sql_utils.is_primary_hadr_replica(connection_factory, database_name):
-                    warnings.append('[DB: {0}] - IS NOT PRIMARY HADR REPLICA'.format(database_name))
+                    information.append('[DB: {0}] - IS NOT PRIMARY HADR REPLICA'.format(database_name))
                     continue
             except Exception as e:
                 errors.append('[DB: {0}] ERROR OCCIRRED WHILE CHECK PRIMARY HADR REPLICA(sys.fn_hadr_is_primary_replica): {1}'.format(database_name, str(e)))
@@ -248,16 +211,21 @@ def __apply_sql_login(connection_factory, sql_login, exist, sql_server_version):
                 except Exception as e:
                     errors.append('[DB: {1}; USER: {0}]: ERROR OCCURRED WHILE GET USER ROLES: - {2}'.format(user_name, database_name, str(e)))
 
+    if changes:
+        changed = True
 
-    return changes, warnings, errors, True
+    return changes, information, warnings, errors, changed
 
 
-def __get_sql_login_changes(connection_factory, sql_login, exist, sql_server_version):
+def __get_sql_login_changes(connection_factory, sql_login, sql_server_version):
     login = sql_login.login
-
+    exist = sql_utils.login_exists(connection_factory, login)
+    
     changes = []
     warnings = []
     errors = []
+    information = []
+    changed = False
 
     if sql_login.state == "present":
 
@@ -329,13 +297,13 @@ def __get_sql_login_changes(connection_factory, sql_login, exist, sql_server_ver
                 changes.append('[{0}] - [CREATED]'.format("; ".join(options)))
             except Exception as e:
                 errors.append('[LOGIN: {0}] ERROR OCCIRRED WHILE CREATING: {1}'.format(sql_login.login, str(e)))
-                return changes, warnings, errors, False
+                return changes, information, warnings, errors, False
 
     if sql_login.state == "absent" and exist:
         changes.append('[LOGIN: {0}] - [DROPPED]'.format(sql_login.login))
 
     for user in sql_login.users:
-
+        
         for database in user.databases:
             database_name = database.name
             roles = []
@@ -345,7 +313,7 @@ def __get_sql_login_changes(connection_factory, sql_login, exist, sql_server_ver
 
             try:
                 if sql_server_version == 10 and sql_utils.is_mirror_database(connection_factory, database_name):
-                    warnings.append('[DB: {0}] - IS MIRROR DATABASE'.format(database_name))
+                    information.append('[DB: {0}] - IS MIRROR DATABASE'.format(database_name))
                     continue
             except Exception as e:
                 errors.append('[DB: {0}] ERROR OCCIRRED WHILE CHECK MIRRORING: {1}'.format(database_name, str(e)))
@@ -361,7 +329,7 @@ def __get_sql_login_changes(connection_factory, sql_login, exist, sql_server_ver
 
             try:
                 if sql_server_version >= 12 and not sql_utils.is_primary_hadr_replica(connection_factory, database_name):
-                    warnings.append('[DB: {0}] - IS NOT PRIMARY HADR REPLICA'.format(database_name))
+                    information.append('[DB: {0}] - IS NOT PRIMARY HADR REPLICA'.format(database_name))
                     continue
             except Exception as e:
                 errors.append('[DB: {0}] ERROR OCCIRRED WHILE CHECK PRIMARY HADR REPLICA(sys.fn_hadr_is_primary_replica): {1}'.format(database_name, str(e)))
@@ -397,7 +365,7 @@ def __get_sql_login_changes(connection_factory, sql_login, exist, sql_server_ver
                     if role.upper() in map(str.upper, default_roles):
                         roles.append(role)
                     else:
-                        warnings.append('[DB: {1}; USER: {0}]: SQL ROLE: [{2}] - UNAVAILABLE, AVAILABLE ROLES - [{3}]'.format(user_name, database_name, role, ", ".join(default_roles)))
+                        warnings.append('[DB: {1}; USER: {0}]: SQL ROLE: [{2}] - UNAVAILABLE'.format(user_name, database_name, role))
 
                 try:
                     current_user_roles = sql_utils.get_user_roles(connection_factory, user_name, database_name)
@@ -414,4 +382,7 @@ def __get_sql_login_changes(connection_factory, sql_login, exist, sql_server_ver
                 except Exception as e:
                     errors.append('[DB: {1}; USER: {0}]: ERROR OCCURRED WHILE GET USER ROLES; {2}'.format(user_name, database_name, str(e)))
 
-    return changes, warnings, errors, True
+    if changes:
+        changed = True
+
+    return changes, information, warnings, errors, changed

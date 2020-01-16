@@ -10,5 +10,3 @@
           - users_1.json
       register: out
       delegate_to: localhost
-
-    - debug: var=out

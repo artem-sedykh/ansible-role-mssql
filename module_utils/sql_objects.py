@@ -8,6 +8,10 @@ class SqlDatabase(object):
         self.state = state
         self.roles = roles
 
+    @classmethod
+    def from_json(cls, data):
+        return cls(**data)
+
     @staticmethod
     def parse(json_databases):
         sql_databases = []
@@ -38,6 +42,12 @@ class SqlUser(object):
         """
         self.databases = databases
         self.name = name
+
+    @classmethod
+    def from_json(cls, data):
+        user = cls(**data)
+        user.databases = list(map(SqlDatabase.from_json, data["databases"]))
+        return user
 
     @staticmethod
     def parse(json_user):
@@ -83,6 +93,13 @@ class SqlLogin(object):
         self.enabled = enabled
         self.state = state
         self.users = users
+
+
+    @classmethod
+    def from_json(cls, data):
+        sql_login = cls(**data)
+        sql_login.users = list(map(SqlUser.from_json, data["users"]))
+        return sql_login
 
     @staticmethod
     def parse(json_logins):
