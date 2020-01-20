@@ -40,6 +40,9 @@ def main():
         if not file_paths:
             msg = "no files found for source: {0}".format(path)
             module.log(msg)
+            if 'warnings' not in files_info[path]:
+                files_info[path]['warnings'] = []
+
             files_info[path]['warnings'].append(msg)
             continue
 
